@@ -14,7 +14,7 @@ typedef struct {
 
 static const Register registers[] = 
 {
-    {0, 0x00},      // $0 - constant 0
+    {0, 0x00},     // $0 - constant 0
     {1, 0x00},     // $at - assembler temporary
     {2, 0x00},     // $v0
     {3, 0x00},     // $v1
@@ -49,5 +49,14 @@ static const Register registers[] =
 };
 
 int main(){
-    
+    // stores a random first instruction for testing
+    inst_memory[0] = 0x20100028;
+
+    // declares program counter and sets it to 0
+    int pc = 0;
+
+    // stores the instruction in the program counter address to cur_inst
+    int cur_inst = inst_memory[pc];
+
+    std::cout << "Instruction: " << cur_inst << std::endl;
 }
