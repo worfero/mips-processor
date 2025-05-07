@@ -4,6 +4,8 @@
 
 #define MAX_INST_SIZE 1024
 
+uint32_t inst_memory[MAX_INST_SIZE];
+
 // saves the values of all registers available
 typedef struct {
     int address;
@@ -47,5 +49,5 @@ static const Register registers[] =
 };
 
 int main(){
-    // program
+    
 }
