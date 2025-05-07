@@ -2,9 +2,11 @@
 #include <string>
 #include <map>
 
-#define MAX_INST_SIZE 1024
+#define MAX_INST_MEM_SIZE 1024
+#define MAX_DATA_MEM_SIZE 0x40000000
 
-uint32_t inst_memory[MAX_INST_SIZE];
+uint32_t inst_memory[MAX_INST_MEM_SIZE];
+uint32_t data_memory[MAX_DATA_MEM_SIZE];
 
 // saves the values of all registers available
 typedef struct {
@@ -31,13 +33,13 @@ static const Register registers[] =
     {14, 0x00},    // $t6
     {15, 0x00},    // $t7
     {16, 0x00},    // $s0
-    {17, 0x00},    // $s0
-    {18, 0x00},    // $s0
-    {19, 0x00},    // $s0
-    {20, 0x00},    // $s0
-    {21, 0x00},    // $s0
-    {22, 0x00},    // $s0
-    {23, 0x00},    // $s0
+    {17, 0x00},    // $s1
+    {18, 0x00},    // $s2
+    {19, 0x00},    // $s3
+    {20, 0x00},    // $s4
+    {21, 0x00},    // $s5
+    {22, 0x00},    // $s6
+    {23, 0x00},    // $s7
     {24, 0x00},    // $t8
     {25, 0x00},    // $t9
     {26, 0x00},    // $k0
@@ -55,7 +57,7 @@ int get_bits(int num, int lsbit, int msbit) {
 
 int main(){
     // stores a "lw $t1, 0($s0)" instruction as the first instruction for testing
-    inst_memory[0] = 0x8e090000;
+    inst_memory[0] = 0x8e090008;
 
     // declares program counter and sets it to 0
     int pc = 0;
@@ -64,6 +66,8 @@ int main(){
     int cur_inst = inst_memory[pc];
 
     // parses the rs register from the instruction
-    int rs = get_bits(cur_inst, 21, 25);
-    std::cout << rs << std::endl;
+    int rs = registers[get_bits(cur_inst, 21, 25)].value;
+    int offset = get_bits(cur_inst, 0, 15);
+    int mem_value = rs + offset;
+    std::cout << rs << " " << offset << std::endl;
 }
