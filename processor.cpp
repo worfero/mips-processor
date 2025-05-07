@@ -48,9 +48,14 @@ static const Register registers[] =
     {31, 0x00}     // $ra - procedure return address
 };
 
+int get_bits(int num, int lsbit, int msbit) {
+    int mask = ((1 << (msbit - lsbit + 1)) - 1) << lsbit;
+    return (num & mask) >> lsbit;
+}
+
 int main(){
-    // stores a random first instruction for testing
-    inst_memory[0] = 0x20100028;
+    // stores a "lw $t1, 0($s0)" instruction as the first instruction for testing
+    inst_memory[0] = 0x8e090000;
 
     // declares program counter and sets it to 0
     int pc = 0;
@@ -58,5 +63,7 @@ int main(){
     // stores the instruction in the program counter address to cur_inst
     int cur_inst = inst_memory[pc];
 
-    std::cout << "Instruction: " << cur_inst << std::endl;
+    // parses the rs register from the instruction
+    int rs = get_bits(cur_inst, 21, 25);
+    std::cout << rs << std::endl;
 }
