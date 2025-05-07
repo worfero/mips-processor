@@ -3,7 +3,7 @@
 #include <map>
 
 #define MAX_INST_MEM_SIZE 1024
-#define MAX_DATA_MEM_SIZE 0x40000000
+#define MAX_DATA_MEM_SIZE 65536
 
 uint32_t inst_memory[MAX_INST_MEM_SIZE];
 uint32_t data_memory[MAX_DATA_MEM_SIZE];
@@ -58,6 +58,8 @@ int get_bits(int num, int lsbit, int msbit) {
 int main(){
     // stores a "lw $t1, 0($s0)" instruction as the first instruction for testing
     inst_memory[0] = 0x8e090008;
+    
+    data_memory[8] = 10;
 
     // declares program counter and sets it to 0
     int pc = 0;
@@ -68,6 +70,7 @@ int main(){
     // parses the rs register from the instruction
     int rs = registers[get_bits(cur_inst, 21, 25)].value;
     int offset = get_bits(cur_inst, 0, 15);
-    int mem_value = rs + offset;
-    std::cout << rs << " " << offset << std::endl;
+    int data_addr = rs + offset;
+    int data_value = data_memory[data_addr];
+    std::cout << data_value << std::endl;
 }
