@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <bitset>
 
 #define MAX_INST_MEM_SIZE 1024
 #define MAX_DATA_MEM_SIZE 65536
@@ -61,21 +62,42 @@ void lw(int instruction){
     // parses the immediate from the instruction
     int offset = get_bits(instruction, 0, 15);
     // gets the value of the specified memory address
-    int data_addr = rs + offset;
-    int data_value = data_memory[data_addr];
+    int mem_addr = rs + offset;
+    int mem_value = data_memory[mem_addr];
 
-    // sets the destination register value to data_value
-    registers[get_bits(instruction, 16, 20)].value = data_value;
+    // sets the destination register value to mem_value
+    registers[get_bits(instruction, 16, 20)].value = mem_value;
+}
+
+void sw(int instruction){
+    // parses the rs register from the instruction
+    int rs = registers[get_bits(instruction, 21, 25)].value;
+    // parses the immediate from the instruction
+    int offset = get_bits(instruction, 0, 15);
+    // gets the value of the specified memory address
+    int mem_addr = rs + offset;
+
+    // sets the destination register value to mem_value
+    data_memory[mem_addr] = registers[get_bits(instruction, 16, 20)].value;
 }
 
 int main(){
-    // stores a "lw $t1, 0($s0)" instruction as the first instruction for testing
-    inst_memory[0] = 0x8e090008;
+    // stores a instruction as the first instruction for testing
+    inst_memory[0] = 0x8d2a000a;
 
     // declares program counter and sets it to 0
     int pc = 0;
     // stores the instruction in the program counter address to cur_inst
     int cur_inst = inst_memory[pc];
-    // executes lw instruction
-    lw(cur_inst);
+    // prepare next instruction
+    pc++;
+    // gets instruction opcode
+    int opcode = get_bits(cur_inst, 26, 31);
+    // executes current instruction
+    if(opcode == 35){
+        lw(cur_inst);
+    }
+    else{
+        sw(cur_inst);
+    }
 }
