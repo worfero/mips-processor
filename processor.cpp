@@ -14,7 +14,7 @@ typedef struct {
     int value;
 } Register;
 
-static const Register registers[] = 
+static Register registers[] = 
 {
     {0, 0x00},     // $0 - constant 0
     {1, 0x00},     // $at - assembler temporary
@@ -69,8 +69,12 @@ int main(){
 
     // parses the rs register from the instruction
     int rs = registers[get_bits(cur_inst, 21, 25)].value;
+    // parses the immediate from the instruction
     int offset = get_bits(cur_inst, 0, 15);
+    // gets the value of the specified memory address
     int data_addr = rs + offset;
     int data_value = data_memory[data_addr];
-    std::cout << data_value << std::endl;
+
+    // sets the destination register value to data_value
+    registers[get_bits(cur_inst, 16, 20)].value = data_value;
 }
