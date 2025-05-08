@@ -34,8 +34,8 @@ static Register registers[] =
     {14, 0x00},    // $t6
     {15, 0x00},    // $t7
     {16, 0x00},    // $s0
-    {17, 0x00},    // $s1
-    {18, 0x00},    // $s2
+    {17, 0x03},    // $s1
+    {18, 0x02},    // $s2
     {19, 0x00},    // $s3
     {20, 0x00},    // $s4
     {21, 0x00},    // $s5
@@ -56,34 +56,49 @@ int get_bits(int num, int lsbit, int msbit) {
     return (num & mask) >> lsbit;
 }
 
+void add(int instruction){
+    // parses the rd register from the instruction
+    Register *rd = &registers[get_bits(instruction, 11, 15)];
+    // parses the rt register from the instruction
+    Register rt = registers[get_bits(instruction, 16, 20)];
+    // parses the rs register from the instruction
+    Register rs = registers[get_bits(instruction, 21, 25)];
+    // performs the arithmetic operation
+    rd->value = rs.value + rt.value;
+}
+
 void lw(int instruction){
     // parses the rs register from the instruction
-    int rs = registers[get_bits(instruction, 21, 25)].value;
+    Register rs = registers[get_bits(instruction, 21, 25)];
+    // parses the rt register from the instruction
+    Register *rt = &registers[get_bits(instruction, 16, 20)];
     // parses the immediate from the instruction
     int offset = get_bits(instruction, 0, 15);
     // gets the value of the specified memory address
-    int mem_addr = rs + offset;
+    int mem_addr = rs.value + offset;
     int mem_value = data_memory[mem_addr];
 
     // sets the destination register value to mem_value
-    registers[get_bits(instruction, 16, 20)].value = mem_value;
+    rt->value = mem_value;
 }
 
 void sw(int instruction){
     // parses the rs register from the instruction
-    int rs = registers[get_bits(instruction, 21, 25)].value;
+    Register rs = registers[get_bits(instruction, 21, 25)];
+    // parses the rt register from the instruction
+    Register rt = registers[get_bits(instruction, 16, 20)];
     // parses the immediate from the instruction
     int offset = get_bits(instruction, 0, 15);
     // gets the value of the specified memory address
-    int mem_addr = rs + offset;
+    int mem_addr = rs.value + offset;
 
     // sets the destination register value to mem_value
-    data_memory[mem_addr] = registers[get_bits(instruction, 16, 20)].value;
+    data_memory[mem_addr] = rt.value;
 }
 
 int main(){
     // stores a instruction as the first instruction for testing
-    inst_memory[0] = 0x8d2a000a;
+    inst_memory[0] = 0x02328020;
 
     // declares program counter and sets it to 0
     int pc = 0;
@@ -94,10 +109,15 @@ int main(){
     // gets instruction opcode
     int opcode = get_bits(cur_inst, 26, 31);
     // executes current instruction
-    if(opcode == 35){
-        lw(cur_inst);
-    }
-    else{
-        sw(cur_inst);
+    switch(opcode){
+        case 0:
+            add(cur_inst);
+            break;
+        case 35:
+            lw(cur_inst);
+            break;
+        case 43:
+            sw(cur_inst);
+            break;
     }
 }
