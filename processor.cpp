@@ -11,8 +11,8 @@ uint32_t data_memory[MAX_DATA_MEM_SIZE];
 
 // saves the values of all registers available
 typedef struct {
-    int address;
-    int value;
+    unsigned address;
+    unsigned value;
 } Register;
 
 static Register registers[] = 
@@ -45,100 +45,104 @@ static Register registers[] =
     {25, 0x00},    // $t9
     {26, 0x00},    // $k0
     {27, 0x00},    // $k1
-    {28, 0x00},    // $gp - global pointer
-    {29, 0x00},    // $sp - stack pointer
-    {30, 0x00},    // $fp - frame pointer
+    {28, 0x00},    // $gp - global pounsigneder
+    {29, 0x00},    // $sp - stack pounsigneder
+    {30, 0x00},    // $fp - frame pounsigneder
     {31, 0x00}     // $ra - procedure return address
 };
 
-int get_bits(int num, int lsbit, int msbit) {
-    int mask = ((1 << (msbit - lsbit + 1)) - 1) << lsbit;
+unsigned get_bits(unsigned num, unsigned lsbit, unsigned msbit) {
+    unsigned mask = ((1 << (msbit - lsbit + 1)) - 1) << lsbit;
     return (num & mask) >> lsbit;
 }
 
-void add(int instruction){
-    // parses the rd register from the instruction
-    Register *rd = &registers[get_bits(instruction, 11, 15)];
-    // parses the rt register from the instruction
-    Register rt = registers[get_bits(instruction, 16, 20)];
-    // parses the rs register from the instruction
-    Register rs = registers[get_bits(instruction, 21, 25)];
+void add(Register *rd, Register rs, Register rt){
     // performs the arithmetic operation
     rd->value = rs.value + rt.value;
 }
 
-void sub(int instruction){
-    // parses the rd register from the instruction
-    Register *rd = &registers[get_bits(instruction, 11, 15)];
-    // parses the rt register from the instruction
-    Register rt = registers[get_bits(instruction, 16, 20)];
-    // parses the rs register from the instruction
-    Register rs = registers[get_bits(instruction, 21, 25)];
+void sub(Register *rd, Register rs, Register rt){
     // performs the arithmetic operation
     rd->value = rs.value - rt.value;
 }
 
-void lw(int instruction){
-    // parses the rs register from the instruction
-    Register rs = registers[get_bits(instruction, 21, 25)];
-    // parses the rt register from the instruction
-    Register *rt = &registers[get_bits(instruction, 16, 20)];
-    // parses the immediate from the instruction
-    int offset = get_bits(instruction, 0, 15);
+void lw(Register rs, Register *rt, unsigned offset){
     // gets the value of the specified memory address
-    int mem_addr = rs.value + offset;
-    int mem_value = data_memory[mem_addr];
+    unsigned mem_addr = rs.value + offset;
+    unsigned mem_value = data_memory[mem_addr];
 
     // sets the destination register value to mem_value
     rt->value = mem_value;
 }
 
-void sw(int instruction){
+void sw(Register rs, Register *rt, unsigned offset){
+    // gets the value of the specified memory address
+    unsigned mem_addr = rs.value + offset;
+
+    // sets the destination register value to mem_value
+    data_memory[mem_addr] = rt->value;
+}
+
+void rTypeInstruction(unsigned instruction){
+    unsigned funct = get_bits(instruction, 0, 6);
+    // parses the rd register from the instruction
+    Register *rd = &registers[get_bits(instruction, 11, 15)];
+    // parses the rt register from the instruction
+    Register rt = registers[get_bits(instruction, 16, 20)];
+    // parses the rs register from the instruction
+    Register rs = registers[get_bits(instruction, 21, 25)];
+    // executes current instruction
+    switch(funct){
+        case 32:
+            add(rd, rs, rt);
+            break;
+        case 34:
+            sub(rd, rs, rt);
+            break;
+    }
+}
+
+void iTypeInstruction(unsigned instruction, unsigned opcode){
     // parses the rs register from the instruction
     Register rs = registers[get_bits(instruction, 21, 25)];
     // parses the rt register from the instruction
-    Register rt = registers[get_bits(instruction, 16, 20)];
+    Register *rt = &registers[get_bits(instruction, 16, 20)];
     // parses the immediate from the instruction
-    int offset = get_bits(instruction, 0, 15);
-    // gets the value of the specified memory address
-    int mem_addr = rs.value + offset;
-
-    // sets the destination register value to mem_value
-    data_memory[mem_addr] = rt.value;
+    unsigned immediate = get_bits(instruction, 0, 15);
+    // executes current instruction
+    switch(opcode){
+        case 35:
+            lw(rs, rt, immediate);
+            break;
+        case 43:
+            sw(rs, rt, immediate);
+            break;
+    }
 }
 
-int main(){
+unsigned main(){
     // stores a instruction as the first instruction for testing
-    inst_memory[0] = 0x02328022;
+    inst_memory[0] = 0x8d49000a;
+
+    data_memory[10] = 8;
+    data_memory[9] = 8;
+    data_memory[11] = 8;
 
     // declares program counter and sets it to 0
-    int pc = 0;
+    unsigned pc = 0;
     // stores the instruction in the program counter address to cur_inst
-    int cur_inst = inst_memory[pc];
+    unsigned cur_inst = inst_memory[pc];
     // prepare next instruction
     pc++;
     // gets instruction opcode
-    int opcode = get_bits(cur_inst, 26, 31);
-    // As all R-Type instructions, opcode = 0 and it depends on funct
-    int funct = get_bits(cur_inst, 0, 6);
-    // executes current instruction
-    switch(opcode){
-        case 0:
-            switch(funct){
-                case 32:
-                    add(cur_inst);
-                    break;
-                case 34:
-                    sub(cur_inst);
-                    break;
-            }
-            break;
-        case 35:
-            lw(cur_inst);
-            break;
-        case 43:
-            sw(cur_inst);
-            break;
+    unsigned opcode = get_bits(cur_inst, 26, 31);
+    // Use std::bitset to represent the number in binary
+
+    // As all R-Type instructions, opcode = 0
+    if(opcode == 0){
+        rTypeInstruction(cur_inst);
     }
-    std::cout << registers[16].value << std::endl;
+    else{
+        iTypeInstruction(cur_inst, opcode);
+    }
 }
