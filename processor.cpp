@@ -34,8 +34,8 @@ static Register registers[] =
     {14, 0x00},    // $t6
     {15, 0x00},    // $t7
     {16, 0x00},    // $s0
-    {17, 0x03},    // $s1
-    {18, 0x02},    // $s2
+    {17, 0x00},    // $s1
+    {18, 0x00},    // $s2
     {19, 0x00},    // $s3
     {20, 0x00},    // $s4
     {21, 0x00},    // $s5
@@ -65,6 +65,17 @@ void add(int instruction){
     Register rs = registers[get_bits(instruction, 21, 25)];
     // performs the arithmetic operation
     rd->value = rs.value + rt.value;
+}
+
+void sub(int instruction){
+    // parses the rd register from the instruction
+    Register *rd = &registers[get_bits(instruction, 11, 15)];
+    // parses the rt register from the instruction
+    Register rt = registers[get_bits(instruction, 16, 20)];
+    // parses the rs register from the instruction
+    Register rs = registers[get_bits(instruction, 21, 25)];
+    // performs the arithmetic operation
+    rd->value = rs.value - rt.value;
 }
 
 void lw(int instruction){
@@ -98,7 +109,7 @@ void sw(int instruction){
 
 int main(){
     // stores a instruction as the first instruction for testing
-    inst_memory[0] = 0x02328020;
+    inst_memory[0] = 0x02328022;
 
     // declares program counter and sets it to 0
     int pc = 0;
@@ -108,10 +119,19 @@ int main(){
     pc++;
     // gets instruction opcode
     int opcode = get_bits(cur_inst, 26, 31);
+    // As all R-Type instructions, opcode = 0 and it depends on funct
+    int funct = get_bits(cur_inst, 0, 6);
     // executes current instruction
     switch(opcode){
         case 0:
-            add(cur_inst);
+            switch(funct){
+                case 32:
+                    add(cur_inst);
+                    break;
+                case 34:
+                    sub(cur_inst);
+                    break;
+            }
             break;
         case 35:
             lw(cur_inst);
@@ -120,4 +140,5 @@ int main(){
             sw(cur_inst);
             break;
     }
+    std::cout << registers[16].value << std::endl;
 }
