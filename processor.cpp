@@ -34,8 +34,8 @@ static Register registers[] =
     {14, 0x00},    // $t6
     {15, 0x00},    // $t7
     {16, 0x00},    // $s0
-    {17, 0x05},    // $s1
-    {18, 0x47},    // $s2
+    {17, 0x00},    // $s1
+    {18, 0x00},    // $s2
     {19, 0x00},    // $s3
     {20, 0x00},    // $s4
     {21, 0x00},    // $s5
@@ -86,6 +86,11 @@ void slt(Register *rd, Register rs, Register rt){
     (rs.value < rt.value) ? rd->value = 1 : rd->value = 0;
 }
 
+void beq(Register rs, Register *rt, unsigned offset, unsigned *pc){
+    // compares rs to rt, if they are equal, add the offset to the program counter
+    (rs.value == rt->value) ? *pc = *pc + offset : *pc = *pc;
+}
+
 void lw(Register rs, Register *rt, unsigned offset){
     // gets the value of the specified memory address
     unsigned mem_addr = rs.value + offset;
@@ -131,7 +136,7 @@ void rTypeInstruction(unsigned instruction){
     }
 }
 
-void iTypeInstruction(unsigned instruction, unsigned opcode){
+void iTypeInstruction(unsigned instruction, unsigned opcode, unsigned *pc){
     // parses the rs register from the instruction
     Register rs = registers[get_bits(instruction, 21, 25)];
     // parses the rt register from the instruction
@@ -140,6 +145,9 @@ void iTypeInstruction(unsigned instruction, unsigned opcode){
     unsigned immediate = get_bits(instruction, 0, 15);
     // executes current instruction
     switch(opcode){
+        case 4:
+            beq(rs, rt, immediate, pc);
+            break;
         case 35:
             lw(rs, rt, immediate);
             break;
@@ -151,7 +159,7 @@ void iTypeInstruction(unsigned instruction, unsigned opcode){
 
 unsigned main(){
     // stores a instruction as the first instruction for testing
-    inst_memory[0] = 0x0232802a;
+    inst_memory[0] = 0x1211000b;
 
     data_memory[10] = 8;
     data_memory[9] = 8;
@@ -171,7 +179,6 @@ unsigned main(){
         rTypeInstruction(cur_inst);
     }
     else{
-        iTypeInstruction(cur_inst, opcode);
+        iTypeInstruction(cur_inst, opcode, &pc);
     }
-    std::cout << registers[16].value << std::endl;
 }
