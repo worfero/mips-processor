@@ -1,0 +1,3 @@
+[submodule "mips-assembler"]
+	path = mips-assembler
+	url = https://github.com/worfero/mips-assembler/
