@@ -34,8 +34,8 @@ static Register registers[] =
     {14, 0x00},    // $t6
     {15, 0x00},    // $t7
     {16, 0x00},    // $s0
-    {17, 0x00},    // $s1
-    {18, 0x00},    // $s2
+    {17, 0x05},    // $s1
+    {18, 0x47},    // $s2
     {19, 0x00},    // $s3
     {20, 0x00},    // $s4
     {21, 0x00},    // $s5
@@ -56,6 +56,11 @@ unsigned get_bits(unsigned num, unsigned lsbit, unsigned msbit) {
     return (num & mask) >> lsbit;
 }
 
+std::bitset<32> get_binary(int num){
+    std::bitset<32> x(num);
+    return x;
+}
+
 void add(Register *rd, Register rs, Register rt){
     // performs the arithmetic operation
     rd->value = rs.value + rt.value;
@@ -64,6 +69,21 @@ void add(Register *rd, Register rs, Register rt){
 void sub(Register *rd, Register rs, Register rt){
     // performs the arithmetic operation
     rd->value = rs.value - rt.value;
+}
+
+void and(Register *rd, Register rs, Register rt){
+    // performs the arithmetic operation
+    rd->value = rs.value & rt.value;
+}
+
+void or(Register *rd, Register rs, Register rt){
+    // performs the arithmetic operation
+    rd->value = rs.value | rt.value;
+}
+
+void slt(Register *rd, Register rs, Register rt){
+    // performs the arithmetic operation
+    (rs.value < rt.value) ? rd->value = 1 : rd->value = 0;
 }
 
 void lw(Register rs, Register *rt, unsigned offset){
@@ -99,6 +119,15 @@ void rTypeInstruction(unsigned instruction){
         case 34:
             sub(rd, rs, rt);
             break;
+        case 36:
+            and(rd, rs, rt);
+            break;
+        case 37:
+            or(rd, rs, rt);
+            break;
+        case 42:
+            slt(rd, rs, rt);
+            break;
     }
 }
 
@@ -122,7 +151,7 @@ void iTypeInstruction(unsigned instruction, unsigned opcode){
 
 unsigned main(){
     // stores a instruction as the first instruction for testing
-    inst_memory[0] = 0x8d49000a;
+    inst_memory[0] = 0x0232802a;
 
     data_memory[10] = 8;
     data_memory[9] = 8;
@@ -136,13 +165,13 @@ unsigned main(){
     pc++;
     // gets instruction opcode
     unsigned opcode = get_bits(cur_inst, 26, 31);
-    // Use std::bitset to represent the number in binary
 
-    // As all R-Type instructions, opcode = 0
+    // For all R-Type instructions, opcode = 0
     if(opcode == 0){
         rTypeInstruction(cur_inst);
     }
     else{
         iTypeInstruction(cur_inst, opcode);
     }
+    std::cout << registers[16].value << std::endl;
 }
