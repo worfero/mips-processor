@@ -2,9 +2,16 @@
 #include <string>
 #include <map>
 
-#define MAX_INST_MEM_SIZE 1024
-#define MAX_DATA_MEM_SIZE 65536
+#define MAX_MEM_SIZE 65536
 #define BUF_SIZE_FILE   65536    // Maximum buffer for a file
+#define MAX_INST_NUM 1000 // Maximum number of instructions
+#define DATA_MEM_START 1001 // starting address for data
+
+#define FETCH 0
+#define DECODE 1
+#define EXECUTE 2
+#define MEMORY 3
+#define WRITEBACK 4
 
 // saves the values of all registers available
 typedef struct {
@@ -12,29 +19,49 @@ typedef struct {
     unsigned value;
 } Register;
 
+typedef struct {
+    // declaring instruction variables
+    int op;
+    int rd;
+    int rs;
+    int rt;
+    int imm;
+    int sa;
+    int funct;
+} Instruction;
+
 class Processor {
     public:
         Processor();
 
-        uint32_t inst_memory[MAX_INST_MEM_SIZE];
-        uint32_t data_memory[MAX_DATA_MEM_SIZE];
+        uint32_t memory_space[MAX_MEM_SIZE];
 
         Register registers[32];
+
+        Instruction instruction;
 
         // program counter
         unsigned pc;
         // current instruction
-        unsigned cur_inst;
+        unsigned inst_index;
         // opcode
         unsigned opcode;
+        // state of the machine
+        int state;
+        // number of instructions
+        int program_size;
 
         void run();
 
         void loadProgram(std::vector<unsigned> program);
 
-        void rTypeInstruction(unsigned instruction);
+        void fetch();
 
-        void iTypeInstruction(unsigned instruction, unsigned opcode, unsigned *pc);
+        void decode();
+
+        void execute();
+
+        void memory();
 
         void add(Register *rd, Register rs, Register rt);
         
@@ -46,9 +73,9 @@ class Processor {
         
         void slt(Register *rd, Register rs, Register rt);
         
-        void beq(Register rs, Register *rt, unsigned offset, unsigned *pc);
+        void beq(Register rs, Register *rt, unsigned offset, unsigned pc);
 
-        void addi(Register rs, Register *rt, unsigned imm, unsigned *pc);
+        void addi(Register rs, Register *rt, unsigned imm);
         
         void lw(Register rs, Register *rt, unsigned offset);
         
@@ -74,8 +101,8 @@ Processor::Processor() : registers
     {14, 0x00},    // $t6
     {15, 0x00},    // $t7
     {16, 0x00},    // $s0
-    {17, 0x05},    // $s1
-    {18, 0x03},    // $s2
+    {17, 0x00},    // $s1
+    {18, 0x00},    // $s2
     {19, 0x00},    // $s3
     {20, 0x00},    // $s4
     {21, 0x00},    // $s5
