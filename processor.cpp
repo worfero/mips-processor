@@ -8,18 +8,28 @@ unsigned get_bits(unsigned num, unsigned lsbit, unsigned msbit) {
 
 void Processor::run(){
     pc = 0;
-    // stores the instruction in the program counter address to cur_inst
-    unsigned cur_inst = inst_memory[pc];
-    // prepare next instruction
-    pc++;
-    // gets instruction opcode
-    opcode = get_bits(cur_inst, 26, 31);
-    // For all R-Type instructions, opcode = 0
-    if(opcode == 0){
-        rTypeInstruction(cur_inst);
+    unsigned array_size = sizeof(inst_memory)/sizeof(inst_memory[0]);
+    unsigned program_size = 0;
+    for (int i = 0; i < array_size; i++){
+        if (inst_memory[i] != 0){
+            program_size++;
+        }
     }
-    else{
-        //iTypeInstruction(cur_inst, opcode, &pc);
+
+    for(pc; pc < program_size;){
+        // stores the instruction in the program counter address to cur_inst
+        unsigned cur_inst = inst_memory[pc];
+        // prepare next instruction
+        pc++;
+        // gets instruction opcode
+        opcode = get_bits(cur_inst, 26, 31);
+        // For all R-Type instructions, opcode = 0
+        if(opcode == 0){
+            rTypeInstruction(cur_inst);
+        }
+        else{
+            iTypeInstruction(cur_inst, opcode, &pc);
+        }
     }
 }
 
@@ -56,6 +66,11 @@ void Processor::slt(Register *rd, Register rs, Register rt){
 void Processor::beq(Register rs, Register *rt, unsigned offset, unsigned *pc){
     // compares rs to rt, if they are equal, add the offset to the program counter
     (rs.value == rt->value) ? *pc = *pc + offset : *pc = *pc;
+}
+
+void Processor::addi(Register rs, Register *rt, unsigned imm, unsigned *pc){
+    // sums rs to the immediate and stores it at rt
+    rt->value = rs.value + imm;
 }
 
 void Processor::lw(Register rs, Register *rt, unsigned offset){
@@ -115,6 +130,9 @@ void Processor::iTypeInstruction(unsigned instruction, unsigned opcode, unsigned
         case 4:
             beq(rs, rt, immediate, pc);
             break;
+        case 8:
+            addi(rs, rt, immediate, pc);
+            break;
         case 35:
             lw(rs, rt, immediate);
             break;
@@ -127,9 +145,11 @@ void Processor::iTypeInstruction(unsigned instruction, unsigned opcode, unsigned
 unsigned main(){
     Processor processor;
 
-    // stores a instruction as the first instruction for testing
-    processor.inst_memory[0] = 0x02328020;
-
+    // stores instructions for testing
+    processor.inst_memory[0] = 0x20110028;
+    processor.inst_memory[1] = 0x20120032;
+    processor.inst_memory[2] = 0x02328020;
+    
     processor.run();
     std::cout << processor.registers[16].value << std::endl;
 }

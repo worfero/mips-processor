@@ -44,6 +44,8 @@ class Processor {
         void slt(Register *rd, Register rs, Register rt);
         
         void beq(Register rs, Register *rt, unsigned offset, unsigned *pc);
+
+        void addi(Register rs, Register *rt, unsigned imm, unsigned *pc);
         
         void lw(Register rs, Register *rt, unsigned offset);
         
