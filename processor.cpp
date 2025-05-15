@@ -1,9 +1,39 @@
 #include <bitset>
+#include <fstream>
+#include <vector>
+#include <iomanip>
 #include "processor.h"
 
 unsigned get_bits(unsigned num, unsigned lsbit, unsigned msbit) {
     unsigned mask = ((1 << (msbit - lsbit + 1)) - 1) << lsbit;
     return (num & mask) >> lsbit;
+}
+
+std::vector<unsigned> readFile() {
+    std::string filename = "mips-assembler/machine-code.bin";
+    std::ifstream file(filename, std::ios::binary);
+
+    std::vector<unsigned> program;
+    unsigned buffer;
+
+    if (!file.is_open()) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return program;
+    }
+
+    while (file.read(reinterpret_cast<char*>(&buffer), sizeof(buffer))) {
+        program.push_back(buffer);
+    }
+
+    return program;
+
+    file.close();
+}
+
+void Processor::loadProgram(std::vector<unsigned> program){
+    for(int i = 0; i < program.size(); i++){
+        inst_memory[i] = program[i];
+    }
 }
 
 void Processor::run(){
@@ -145,11 +175,12 @@ void Processor::iTypeInstruction(unsigned instruction, unsigned opcode, unsigned
 unsigned main(){
     Processor processor;
 
-    // stores instructions for testing
-    processor.inst_memory[0] = 0x20110028;
-    processor.inst_memory[1] = 0x20120032;
-    processor.inst_memory[2] = 0x02328020;
+    // reads instructions from bin file
+    std::vector<unsigned> program = readFile();
+    // stores instructions
+    processor.loadProgram(program);
     
     processor.run();
+    
     std::cout << processor.registers[16].value << std::endl;
 }

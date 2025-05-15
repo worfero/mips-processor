@@ -4,6 +4,7 @@
 
 #define MAX_INST_MEM_SIZE 1024
 #define MAX_DATA_MEM_SIZE 65536
+#define BUF_SIZE_FILE   65536    // Maximum buffer for a file
 
 // saves the values of all registers available
 typedef struct {
@@ -28,6 +29,8 @@ class Processor {
         unsigned opcode;
 
         void run();
+
+        void loadProgram(std::vector<unsigned> program);
 
         void rTypeInstruction(unsigned instruction);
 
