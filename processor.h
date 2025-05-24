@@ -50,6 +50,10 @@ class Processor {
         int state;
         // number of instructions
         int program_size;
+        // result of the ALU operation
+        unsigned ALU_result;
+        // destination register
+        Register *dest_reg;
 
         void run();
 
@@ -63,19 +67,21 @@ class Processor {
 
         void memory();
 
-        void add(Register *rd, Register rs, Register rt);
-        
-        void sub(Register *rd, Register rs, Register rt);
-        
-        void and(Register *rd, Register rs, Register rt);
-        
-        void or(Register *rd, Register rs, Register rt);
-        
-        void slt(Register *rd, Register rs, Register rt);
-        
-        void beq(Register rs, Register *rt, unsigned offset, unsigned pc);
+        void writeback();
 
-        void addi(Register rs, Register *rt, unsigned imm);
+        void add(Register rs, Register rt);
+        
+        void sub(Register rs, Register rt);
+        
+        void and(Register rs, Register rt);
+        
+        void or(Register rs, Register rt);
+        
+        void slt(Register rs, Register rt);
+        
+        void beq(Register rs, Register rt, unsigned offset, unsigned pc);
+
+        void addi(Register rs, unsigned imm);
         
         void lw(Register rs, Register *rt, unsigned offset);
         

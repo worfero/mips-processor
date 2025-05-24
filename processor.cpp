@@ -66,6 +66,7 @@ void Processor::run(){
                 state = WRITEBACK;
                 break;
             case WRITEBACK:
+                writeback();
                 state = FETCH;
                 break;
             default:
@@ -80,39 +81,40 @@ std::bitset<32> get_binary(int num){
     return x;
 }
 
-void Processor::add(Register *rd, Register rs, Register rt){
+void Processor::add(Register rs, Register rt){
     // performs the arithmetic operation
-    rd->value = rs.value + rt.value;
+    ALU_result = rs.value + rt.value;
 }
 
-void Processor::sub(Register *rd, Register rs, Register rt){
+void Processor::sub(Register rs, Register rt){
     // performs the arithmetic operation
-    rd->value = rs.value - rt.value;
+    ALU_result = rs.value - rt.value;
 }
 
-void Processor::and(Register *rd, Register rs, Register rt){
+void Processor::and(Register rs, Register rt){
     // performs the arithmetic operation
-    rd->value = rs.value & rt.value;
+    ALU_result = rs.value & rt.value;
 }
 
-void Processor::or(Register *rd, Register rs, Register rt){
+void Processor::or(Register rs, Register rt){
     // performs the arithmetic operation
-    rd->value = rs.value | rt.value;
+    ALU_result = rs.value | rt.value;
 }
 
-void Processor::slt(Register *rd, Register rs, Register rt){
+void Processor::slt(Register rs, Register rt){
     // performs the arithmetic operation
-    (rs.value < rt.value) ? rd->value = 1 : rd->value = 0;
+    (rs.value < rt.value) ? ALU_result = 1 : ALU_result = 0;
 }
 
-void Processor::beq(Register rs, Register *rt, unsigned offset, unsigned pc){
+void Processor::beq(Register rs, Register rt, unsigned offset, unsigned pc){
     // compares rs to rt, if they are equal, add the offset to the program counter
-    (rs.value == rt->value) ? pc = pc + offset : pc = pc;
+    (rs.value == rt.value) ? ALU_result = pc + offset : ALU_result = pc;
 }
 
-void Processor::addi(Register rs, Register *rt, unsigned imm){
+void Processor::addi(Register rs, unsigned imm){
     // sums rs to the immediate and stores it at rt
-    rt->value = rs.value + imm;
+    ALU_result = rs.value + imm;
+    dest_reg = &registers[instruction.rt];
 }
 
 void Processor::lw(Register rs, Register *rt, unsigned offset){
@@ -161,26 +163,26 @@ void Processor::execute(){
     // R-Type instructions
     if(instruction.op == 0){
         // parses the rd register from the instruction
-        Register *rd = &registers[instruction.rd];
+        dest_reg = &registers[instruction.rd];
         // parses the rt register from the instruction
         Register rt = registers[instruction.rt];
         // parses the rs register from the instruction
         Register rs = registers[instruction.rs];
         switch(instruction.funct){
             case 32:
-                add(rd, rs, rt);
+                add(rs, rt);
                 break;
             case 34:
-                sub(rd, rs, rt);
+                sub(rs, rt);
                 break;
             case 36:
-                and(rd, rs, rt);
+                and(rs, rt);
                 break;
             case 37:
-                or(rd, rs, rt);
+                or(rs, rt);
                 break;
             case 42:
-                slt(rd, rs, rt);
+                slt(rs, rt);
                 break;
             default:
                 break;
@@ -191,7 +193,7 @@ void Processor::execute(){
         // parses the rs register from the instruction
         Register rs = registers[instruction.rs];
         // parses the rt register from the instruction
-        Register *rt = &registers[instruction.rt];
+        Register rt = registers[instruction.rt];
         // parses the immediate from the instruction
         unsigned immediate = instruction.imm;
         // executes current instruction
@@ -200,7 +202,7 @@ void Processor::execute(){
                 beq(rs, rt, immediate, pc);
                 break;
             case 8:
-                addi(rs, rt, immediate);
+                addi(rs, immediate);
                 break;
             default:
                 break;
@@ -209,7 +211,10 @@ void Processor::execute(){
 }
 
 void Processor::memory(){
-    if(instruction.op != 0){
+    if(instruction.op < 8){
+        pc = ALU_result;
+    }
+    else if(instruction.op != 0){
         if(instruction.funct >= 35){
             // parses the rs register from the instruction
             Register rs = registers[instruction.rs];
@@ -227,6 +232,10 @@ void Processor::memory(){
             }
         }
     }
+}
+
+void Processor::writeback(){
+    dest_reg->value = ALU_result;
 }
 
 unsigned main(){
