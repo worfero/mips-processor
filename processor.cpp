@@ -18,6 +18,7 @@ std::vector<unsigned> readFile() {
 
     if (!file.is_open()) {
         std::cerr << "Error opening file: " << filename << std::endl;
+        program = {0};
         return program;
     }
 
@@ -25,9 +26,9 @@ std::vector<unsigned> readFile() {
         program.push_back(buffer);
     }
 
-    return program;
-
     file.close();
+
+    return program;
 }
 
 void Processor::loadProgram(std::vector<unsigned> program){
@@ -81,43 +82,43 @@ std::bitset<32> get_binary(int num){
     return x;
 }
 
-void Processor::add(Register rs, Register rt){
+void Processor::op_add(Register rs, Register rt){
     // performs the arithmetic operation
     ALU_result = rs.value + rt.value;
 }
 
-void Processor::sub(Register rs, Register rt){
+void Processor::op_sub(Register rs, Register rt){
     // performs the arithmetic operation
     ALU_result = rs.value - rt.value;
 }
 
-void Processor::and(Register rs, Register rt){
+void Processor::op_and(Register rs, Register rt){
     // performs the arithmetic operation
     ALU_result = rs.value & rt.value;
 }
 
-void Processor::or(Register rs, Register rt){
+void Processor::op_or(Register rs, Register rt){
     // performs the arithmetic operation
     ALU_result = rs.value | rt.value;
 }
 
-void Processor::slt(Register rs, Register rt){
+void Processor::op_slt(Register rs, Register rt){
     // performs the arithmetic operation
     (rs.value < rt.value) ? ALU_result = 1 : ALU_result = 0;
 }
 
-void Processor::beq(Register rs, Register rt, unsigned offset, unsigned pc){
+void Processor::op_beq(Register rs, Register rt, unsigned offset, unsigned pc){
     // compares rs to rt, if they are equal, add the offset to the program counter
     (rs.value == rt.value) ? ALU_result = pc + offset : ALU_result = pc;
 }
 
-void Processor::addi(Register rs, unsigned imm){
+void Processor::op_addi(Register rs, unsigned imm){
     // sums rs to the immediate and stores it at rt
     ALU_result = rs.value + imm;
     dest_reg = &registers[instruction.rt];
 }
 
-void Processor::lw(Register rs, Register *rt, unsigned offset){
+void Processor::op_lw(Register rs, Register *rt, unsigned offset){
     // gets the value of the specified memory_space address
     unsigned mem_addr = rs.value + offset + DATA_MEM_START;
     unsigned mem_value = memory_space[mem_addr];
@@ -126,7 +127,7 @@ void Processor::lw(Register rs, Register *rt, unsigned offset){
     rt->value = mem_value;
 }
 
-void Processor::sw(Register rs, Register *rt, unsigned offset){
+void Processor::op_sw(Register rs, Register *rt, unsigned offset){
     // gets the value of the specified memory_space address
     unsigned mem_addr = rs.value + offset + DATA_MEM_START;
 
@@ -170,19 +171,19 @@ void Processor::execute(){
         Register rs = registers[instruction.rs];
         switch(instruction.funct){
             case 32:
-                add(rs, rt);
+                op_add(rs, rt);
                 break;
             case 34:
-                sub(rs, rt);
+                op_sub(rs, rt);
                 break;
             case 36:
-                and(rs, rt);
+                op_and(rs, rt);
                 break;
             case 37:
-                or(rs, rt);
+                op_or(rs, rt);
                 break;
             case 42:
-                slt(rs, rt);
+                op_slt(rs, rt);
                 break;
             default:
                 break;
@@ -199,10 +200,10 @@ void Processor::execute(){
         // executes current instruction
         switch(instruction.op){
             case 4:
-                beq(rs, rt, immediate, pc);
+                op_beq(rs, rt, immediate, pc);
                 break;
             case 8:
-                addi(rs, immediate);
+                op_addi(rs, immediate);
                 break;
             default:
                 break;
@@ -211,10 +212,7 @@ void Processor::execute(){
 }
 
 void Processor::memory(){
-    if(instruction.op < 8){
-        pc = ALU_result;
-    }
-    else if(instruction.op != 0){
+    if(instruction.op == 0){
         if(instruction.funct >= 35){
             // parses the rs register from the instruction
             Register rs = registers[instruction.rs];
@@ -224,13 +222,16 @@ void Processor::memory(){
             unsigned offset = instruction.imm;
             switch(instruction.funct){
                 case 35:
-                    lw(rs, rt, offset);
+                    op_lw(rs, rt, offset);
                     break;
                 case 42:
-                    sw(rs, rt, offset);
+                    op_sw(rs, rt, offset);
                     break;
             }
         }
+    }
+    else if(instruction.op < 8){
+        pc = ALU_result;
     }
 }
 
@@ -238,7 +239,7 @@ void Processor::writeback(){
     dest_reg->value = ALU_result;
 }
 
-unsigned main(){
+int main(){
     Processor processor;
 
     // reads instructions from bin file

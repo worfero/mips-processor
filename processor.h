@@ -1,6 +1,9 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <stdint.h>
+#include <vector>
+#include <bitset>
 
 #define MAX_MEM_SIZE 65536
 #define BUF_SIZE_FILE   65536    // Maximum buffer for a file
@@ -69,23 +72,23 @@ class Processor {
 
         void writeback();
 
-        void add(Register rs, Register rt);
+        void op_add(Register rs, Register rt);
         
-        void sub(Register rs, Register rt);
+        void op_sub(Register rs, Register rt);
         
-        void and(Register rs, Register rt);
+        void op_and(Register rs, Register rt);
         
-        void or(Register rs, Register rt);
+        void op_or(Register rs, Register rt);
         
-        void slt(Register rs, Register rt);
+        void op_slt(Register rs, Register rt);
         
-        void beq(Register rs, Register rt, unsigned offset, unsigned pc);
+        void op_beq(Register rs, Register rt, unsigned offset, unsigned pc);
 
-        void addi(Register rs, unsigned imm);
+        void op_addi(Register rs, unsigned imm);
         
-        void lw(Register rs, Register *rt, unsigned offset);
+        void op_lw(Register rs, Register *rt, unsigned offset);
         
-        void sw(Register rs, Register *rt, unsigned offset);
+        void op_sw(Register rs, Register *rt, unsigned offset);
 };
 
 Processor::Processor() : registers 
