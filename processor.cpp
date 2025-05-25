@@ -9,6 +9,13 @@ unsigned get_bits(unsigned num, unsigned lsbit, unsigned msbit) {
     return (num & mask) >> lsbit;
 }
 
+void print_registers(Processor processor){
+    std::cout << "---- Registers ----" << std::endl;
+    for(int i=0; i < MAX_NUM_REG; i++){
+        std::cout << processor.registers[i].mnemonic << " - " << processor.registers[i].value << std::endl;
+    }
+}
+
 std::vector<unsigned> readFile() {
     std::string filename = "mips-assembler/machine-code.bin";
     std::ifstream file(filename, std::ios::binary);
@@ -246,8 +253,7 @@ int main(){
     std::vector<unsigned> program = readFile();
     // stores instructions
     processor.loadProgram(program);
-    
+
     processor.run();
-    
-    std::cout << processor.registers[16].value << std::endl;
+    print_registers(processor);
 }
