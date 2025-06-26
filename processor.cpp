@@ -67,11 +67,17 @@ void Processor::run(){
                 break;
             case EXECUTE:
                 execute();
-                state = MEMORY;
+                if(instruction.op >= 35){
+                    state = MEMORY;
+                }
+                else{
+                    state = WRITEBACK;
+                }
                 break;
             case MEMORY:
                 memory();
                 state = WRITEBACK;
+                //std::cout << "debug" << instruction.funct << std::endl;
                 break;
             case WRITEBACK:
                 writeback();
@@ -132,6 +138,8 @@ void Processor::op_lw(Register rs, Register *rt, unsigned offset){
 
     // sets the destination register value to mem_value
     rt->value = mem_value;
+    std::cout << "Value " << memory_space[mem_addr] << " from memory address " << mem_addr << 
+            " loaded to register " << rt->mnemonic << std::endl;
 }
 
 void Processor::op_sw(Register rs, Register *rt, unsigned offset){
@@ -140,6 +148,8 @@ void Processor::op_sw(Register rs, Register *rt, unsigned offset){
 
     // sets the destination register value to mem_value
     memory_space[mem_addr] = rt->value;
+    std::cout << "Value " << rt->value << " from register " << rt->mnemonic << 
+            " written to memory address " << mem_addr << std::endl;
 }
 
 void Processor::fetch(){
@@ -219,31 +229,29 @@ void Processor::execute(){
 }
 
 void Processor::memory(){
-    if(instruction.op == 0){
-        if(instruction.funct >= 35){
-            // parses the rs register from the instruction
-            Register rs = registers[instruction.rs];
-            // parses the rt register from the instruction
-            Register *rt = &registers[instruction.rt];
-            // parses the offset from the instruction
-            unsigned offset = instruction.imm;
-            switch(instruction.funct){
-                case 35:
-                    op_lw(rs, rt, offset);
-                    break;
-                case 42:
-                    op_sw(rs, rt, offset);
-                    break;
-            }
-        }
-    }
-    else if(instruction.op < 8){
-        pc = ALU_result;
+    // parses the rs register from the instruction
+    Register rs = registers[instruction.rs];
+    // parses the rt register from the instruction
+    Register *rt = &registers[instruction.rt];
+    // parses the offset from the instruction
+    unsigned offset = instruction.imm;
+    switch(instruction.op){
+        case 35:
+            op_lw(rs, rt, offset);
+            break;
+        case 43:
+            op_sw(rs, rt, offset);
+            break;
     }
 }
 
 void Processor::writeback(){
-    dest_reg->value = ALU_result;
+    if(instruction.op > 0 && instruction.op < 8){
+        pc = ALU_result;
+    }
+    else{
+        dest_reg->value = ALU_result;
+    }
 }
 
 int main(){
