@@ -50,42 +50,39 @@ void Processor::loadProgram(std::vector<unsigned> program){
             program_size++;
         }
     }
-
-    state = FETCH;
+    instCounter = 1;
+    instStack[0].stage = FETCH;
 }
 
 void Processor::run(){
-    while(pc <= program_size){
-        switch(state){
-            case FETCH:
-                fetch();
-                state = DECODE;
-                break;
-            case DECODE:
-                decode();
-                state = EXECUTE;
-                break;
-            case EXECUTE:
-                execute();
-                if(instruction.op >= 35){
-                    state = MEMORY;
-                }
-                else{
-                    state = WRITEBACK;
-                }
-                break;
-            case MEMORY:
-                memory();
-                state = WRITEBACK;
-                //std::cout << "debug" << instruction.funct << std::endl;
-                break;
-            case WRITEBACK:
-                writeback();
-                state = FETCH;
-                break;
-            default:
-                state = FETCH;
-                break;
+    while(instCounter != 0){
+        for(int i=0; i < instCounter; i++){
+            switch(instStack[i].stage){
+                case FETCH:
+                    fetch(instStack[i]);
+                    instStack[i].stage = DECODE;
+                    break;
+                case DECODE:
+                    decode(instStack[i]);
+                    instStack[i].stage = EXECUTE;
+                    break;
+                case EXECUTE:
+                    execute(instStack[i]);
+                    instStack[i].stage = MEMORY;
+                    break;
+                case MEMORY:
+                    memory(instStack[i]);
+                    instStack[i].stage = WRITEBACK;
+                    break;
+                case WRITEBACK:
+                    writeback(instStack[i]);
+                    instCounter--;
+                    break;
+            }
+        }
+        if(pc < program_size){
+            instStack[instCounter].stage = FETCH;
+            instCounter++;
         }
     }
 }
@@ -128,7 +125,6 @@ void Processor::op_beq(Register rs, Register rt, unsigned offset, unsigned pc){
 void Processor::op_addi(Register rs, unsigned imm){
     // sums rs to the immediate and stores it at rt
     ALU_result = rs.value + imm;
-    dest_reg = &registers[instruction.rt];
 }
 
 void Processor::op_lw(Register rs, Register *rt, unsigned offset){
@@ -152,32 +148,31 @@ void Processor::op_sw(Register rs, Register *rt, unsigned offset){
             " written to memory address " << mem_addr << std::endl;
 }
 
-void Processor::fetch(){
-    // stores the instruction in the program counter address to inst_index
-    inst_index = memory_space[pc];
+void Processor::fetch(Instruction &instruction){
+    // stores the instruction in the program counter address to instBits
+    instruction.instBits = memory_space[pc];
     // prepares pc for the next instruction
     pc++;
 }
 
-void Processor::decode(){
+void Processor::decode(Instruction &instruction){
     // gets instruction opcode
-    instruction.op = get_bits(inst_index, 26, 31);
-
+    instruction.op = get_bits(instruction.instBits, 26, 31);
     if(instruction.op == 0){
-        instruction.rs = get_bits(inst_index, 21, 25);
-        instruction.rt = get_bits(inst_index, 16, 20);
-        instruction.rd = get_bits(inst_index, 11, 15);
-        instruction.sa = get_bits(inst_index, 6, 10);
-        instruction.funct = get_bits(inst_index, 0, 5);
+        instruction.rs = get_bits(instruction.instBits, 21, 25);
+        instruction.rt = get_bits(instruction.instBits, 16, 20);
+        instruction.rd = get_bits(instruction.instBits, 11, 15);
+        instruction.sa = get_bits(instruction.instBits, 6, 10);
+        instruction.funct = get_bits(instruction.instBits, 0, 5);
     } 
     else{
-        instruction.rs = get_bits(inst_index, 21, 25);
-        instruction.rt = get_bits(inst_index, 16, 20);
-        instruction.imm = get_bits(inst_index, 0, 15);
+        instruction.rs = get_bits(instruction.instBits, 21, 25);
+        instruction.rt = get_bits(instruction.instBits, 16, 20);
+        instruction.imm = get_bits(instruction.instBits, 0, 15);
     }
 }
 
-void Processor::execute(){
+void Processor::execute(Instruction &instruction){
     // R-Type instructions
     if(instruction.op == 0){
         // parses the rd register from the instruction
@@ -208,6 +203,7 @@ void Processor::execute(){
     }
     // I-Type instructions
     else{
+        dest_reg = &registers[instruction.rt];
         // parses the rs register from the instruction
         Register rs = registers[instruction.rs];
         // parses the rt register from the instruction
@@ -217,7 +213,7 @@ void Processor::execute(){
         // executes current instruction
         switch(instruction.op){
             case 4:
-                op_beq(rs, rt, immediate, pc);
+                //op_beq(rs, rt, immediate, pc);
                 break;
             case 8:
                 op_addi(rs, immediate);
@@ -228,7 +224,7 @@ void Processor::execute(){
     }
 }
 
-void Processor::memory(){
+void Processor::memory(Instruction &instruction){
     // parses the rs register from the instruction
     Register rs = registers[instruction.rs];
     // parses the rt register from the instruction
@@ -245,7 +241,7 @@ void Processor::memory(){
     }
 }
 
-void Processor::writeback(){
+void Processor::writeback(Instruction &instruction){
     if(instruction.op > 0 && instruction.op < 8){
         pc = ALU_result;
     }
@@ -263,5 +259,6 @@ int main(){
     processor.loadProgram(program);
 
     processor.run();
+    std::cout << std::endl;
     print_registers(processor);
 }

@@ -34,6 +34,8 @@ typedef struct {
     int imm;
     int sa;
     int funct;
+    int stage;
+    unsigned instBits;
 } Instruction;
 
 class Processor {
@@ -44,18 +46,15 @@ class Processor {
 
         Register registers[MAX_NUM_REG];
 
-        Instruction instruction;
+        Instruction instStack[4];
 
         // program counter
         unsigned pc;
-        // current instruction
-        unsigned inst_index;
         // opcode
         unsigned opcode;
-        // state of the machine
-        int state;
         // number of instructions
         int program_size;
+        int instCounter;
         // result of the ALU operation
         unsigned ALU_result;
         // destination register
@@ -65,15 +64,15 @@ class Processor {
 
         void loadProgram(std::vector<unsigned> program);
 
-        void fetch();
+        void fetch(Instruction &instruction);
 
-        void decode();
+        void decode(Instruction &instruction);
 
-        void execute();
+        void execute(Instruction &instruction);
 
-        void memory();
+        void memory(Instruction &instruction);
 
-        void writeback();
+        void writeback(Instruction &instruction);
 
         void op_add(Register rs, Register rt);
         
