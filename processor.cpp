@@ -55,30 +55,42 @@ void Processor::loadProgram(std::vector<unsigned> program){
 }
 
 void Processor::run(){
+    instructionEnd = false;
     while(instCounter != 0){
         for(int i=0; i < instCounter; i++){
             switch(instStack[i].stage){
                 case FETCH:
                     fetch(instStack[i]);
                     instStack[i].stage = DECODE;
+                    std::cout << "Instruction " << i << " of the stack has been fetched." << std::endl;
                     break;
                 case DECODE:
                     decode(instStack[i]);
                     instStack[i].stage = EXECUTE;
+                    std::cout << "Instruction " << i << " of the stack has been decoded." << std::endl;
                     break;
                 case EXECUTE:
                     execute(instStack[i]);
                     instStack[i].stage = MEMORY;
+                    std::cout << "Instruction " << i << " of the stack has been executed." << std::endl;
                     break;
                 case MEMORY:
                     memory(instStack[i]);
                     instStack[i].stage = WRITEBACK;
+                    std::cout << "Instruction " << i << " of the stack has processed memory." << std::endl;
                     break;
                 case WRITEBACK:
                     writeback(instStack[i]);
-                    instCounter--;
+                    std::cout << "Instruction " << i << " of the stack wroteback to register." << std::endl;
+                    instructionEnd = true;
+                    std::cout << "Instruction " << i << " of the stack has been finished." << std::endl;
                     break;
             }
+        }
+        if(instructionEnd){
+            std::copy(instStack + 1, instStack + 5, instStack);
+            instCounter--;
+            instructionEnd = false;
         }
         if(pc < program_size){
             instStack[instCounter].stage = FETCH;
@@ -225,6 +237,8 @@ void Processor::execute(Instruction &instruction){
 }
 
 void Processor::memory(Instruction &instruction){
+    ALU_result_carry = ALU_result;
+    dest_reg_carry = dest_reg;
     // parses the rs register from the instruction
     Register rs = registers[instruction.rs];
     // parses the rt register from the instruction
@@ -243,10 +257,10 @@ void Processor::memory(Instruction &instruction){
 
 void Processor::writeback(Instruction &instruction){
     if(instruction.op > 0 && instruction.op < 8){
-        pc = ALU_result;
+        pc = ALU_result_carry;
     }
     else{
-        dest_reg->value = ALU_result;
+        dest_reg_carry->value = ALU_result_carry;
     }
 }
 

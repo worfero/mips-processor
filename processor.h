@@ -48,6 +48,7 @@ class Processor {
 
         Instruction instStack[4];
 
+        bool instructionEnd;
         // program counter
         unsigned pc;
         // opcode
@@ -57,8 +58,10 @@ class Processor {
         int instCounter;
         // result of the ALU operation
         unsigned ALU_result;
+        unsigned ALU_result_carry;
         // destination register
         Register *dest_reg;
+        Register *dest_reg_carry;
 
         void run();
 
