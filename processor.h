@@ -38,7 +38,16 @@ typedef struct {
     unsigned instBits;
 } Instruction;
 
+struct HazardDtc {
+    Register rs;
+    Register rt;
+    Register dest_reg_mem;
+    Register dest_reg_wrtb;
+};
+
 class Processor {
+    private:
+        HazardDtc HazardUnit;
     public:
         Processor();
 
@@ -46,8 +55,10 @@ class Processor {
 
         Register registers[MAX_NUM_REG];
 
-        Instruction instStack[4];
+        Instruction instStack[5]; 
 
+        bool writeM;
+        bool writeW;
         bool instructionEnd;
         // program counter
         unsigned pc;
@@ -130,4 +141,9 @@ Processor::Processor() : registers
     {29, 0x00, "$sp"},    // $sp - stack pounsigneder
     {30, 0x00, "$fp"},    // $fp - frame pounsigneder
     {31, 0x00, "$ra"}     // $ra - procedure return address
+}, HazardUnit{
+    {0,0,"NA"},
+    {0,0,"NA"},
+    {0,0,"NA"},
+    {0,0,"NA"}
 } {}

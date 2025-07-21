@@ -56,6 +56,11 @@ void Processor::loadProgram(std::vector<unsigned> program){
 
 void Processor::run(){
     instructionEnd = false;
+    writeM = false;
+    writeW = false;
+    dest_reg = &registers[0];
+    dest_reg_carry = &registers[0];
+
     while(instCounter != 0){
         for(int i=0; i < instCounter; i++){
             switch(instStack[i].stage){
@@ -187,12 +192,33 @@ void Processor::decode(Instruction &instruction){
 void Processor::execute(Instruction &instruction){
     // R-Type instructions
     if(instruction.op == 0){
-        // parses the rd register from the instruction
-        dest_reg = &registers[instruction.rd];
         // parses the rt register from the instruction
         Register rt = registers[instruction.rt];
         // parses the rs register from the instruction
         Register rs = registers[instruction.rs];
+        if(rs.address != 0){
+            if(rs.address == dest_reg_carry->address && writeM){
+                rs.value = ALU_result_carry;
+                writeM = false;
+            }
+            else if(rs.address == dest_reg->address && writeW){
+                rs.value = ALU_result;
+                writeW = false;
+            }
+        }
+
+        if(rt.address != 0){
+            if(rt.address == dest_reg_carry->address && writeM){
+                rt.value = ALU_result_carry;
+                writeM = false;
+            }
+            else if(rt.address == dest_reg->address && writeW){
+                rt.value = ALU_result;
+                writeW = false;
+            }
+        }
+        // parses the rd register from the instruction
+        dest_reg = &registers[instruction.rd];
         switch(instruction.funct){
             case 32:
                 op_add(rs, rt);
@@ -215,11 +241,33 @@ void Processor::execute(Instruction &instruction){
     }
     // I-Type instructions
     else{
-        dest_reg = &registers[instruction.rt];
         // parses the rs register from the instruction
         Register rs = registers[instruction.rs];
         // parses the rt register from the instruction
         Register rt = registers[instruction.rt];
+        if(rs.address != 0){
+            if(rs.address == dest_reg_carry->address && writeM){
+                rs.value = ALU_result_carry;
+                writeM = false;
+            }
+            else if(rs.address == dest_reg->address && writeW){
+                rs.value = ALU_result;
+                writeW = false;
+            }
+        }
+
+        if(rt.address != 0){
+            if(rt.address == dest_reg_carry->address && writeM){
+                rt.value = ALU_result_carry;
+                writeM = false;
+            }
+            else if(rt.address == dest_reg->address && writeW){
+                rt.value = ALU_result;
+                writeW = false;
+            }
+        }
+    
+        dest_reg = &registers[instruction.rt];
         // parses the immediate from the instruction
         unsigned immediate = instruction.imm;
         // executes current instruction
@@ -229,6 +277,7 @@ void Processor::execute(Instruction &instruction){
                 break;
             case 8:
                 op_addi(rs, immediate);
+                writeW = true;
                 break;
             default:
                 break;
@@ -248,6 +297,7 @@ void Processor::memory(Instruction &instruction){
     switch(instruction.op){
         case 35:
             op_lw(rs, rt, offset);
+            writeM = true;
             break;
         case 43:
             op_sw(rs, rt, offset);
