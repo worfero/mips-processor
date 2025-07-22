@@ -38,16 +38,9 @@ typedef struct {
     unsigned instBits;
 } Instruction;
 
-struct HazardDtc {
-    Register rs;
-    Register rt;
-    Register dest_reg_mem;
-    Register dest_reg_wrtb;
-};
-
 class Processor {
     private:
-        HazardDtc HazardUnit;
+        //HazardDtc HazardUnit;
     public:
         Processor();
 
@@ -87,6 +80,8 @@ class Processor {
         void memory(Instruction &instruction);
 
         void writeback(Instruction &instruction);
+
+        void checkFwd(Register *reg);
 
         void op_add(Register rs, Register rt);
         
@@ -141,9 +136,4 @@ Processor::Processor() : registers
     {29, 0x00, "$sp"},    // $sp - stack pounsigneder
     {30, 0x00, "$fp"},    // $fp - frame pounsigneder
     {31, 0x00, "$ra"}     // $ra - procedure return address
-}, HazardUnit{
-    {0,0,"NA"},
-    {0,0,"NA"},
-    {0,0,"NA"},
-    {0,0,"NA"}
 } {}

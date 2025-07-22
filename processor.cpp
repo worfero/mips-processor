@@ -92,6 +92,7 @@ void Processor::run(){
                     break;
             }
         }
+        // if an instruction made through the Writeback stage, it is removed from the array
         if(instructionEnd){
             std::copy(instStack + 1, instStack + 5, instStack);
             instCounter--;
@@ -196,27 +197,11 @@ void Processor::execute(Instruction &instruction){
         Register rt = registers[instruction.rt];
         // parses the rs register from the instruction
         Register rs = registers[instruction.rs];
-        if(rs.address != 0){
-            if(rs.address == dest_reg_carry->address && writeM){
-                rs.value = ALU_result_carry;
-                writeM = false;
-            }
-            else if(rs.address == dest_reg->address && writeW){
-                rs.value = ALU_result;
-                writeW = false;
-            }
-        }
 
-        if(rt.address != 0){
-            if(rt.address == dest_reg_carry->address && writeM){
-                rt.value = ALU_result_carry;
-                writeM = false;
-            }
-            else if(rt.address == dest_reg->address && writeW){
-                rt.value = ALU_result;
-                writeW = false;
-            }
-        }
+        // check if forwarding is needed for both source registers
+        checkFwd(&rs);
+        checkFwd(&rt);
+        
         // parses the rd register from the instruction
         dest_reg = &registers[instruction.rd];
         switch(instruction.funct){
@@ -245,27 +230,10 @@ void Processor::execute(Instruction &instruction){
         Register rs = registers[instruction.rs];
         // parses the rt register from the instruction
         Register rt = registers[instruction.rt];
-        if(rs.address != 0){
-            if(rs.address == dest_reg_carry->address && writeM){
-                rs.value = ALU_result_carry;
-                writeM = false;
-            }
-            else if(rs.address == dest_reg->address && writeW){
-                rs.value = ALU_result;
-                writeW = false;
-            }
-        }
 
-        if(rt.address != 0){
-            if(rt.address == dest_reg_carry->address && writeM){
-                rt.value = ALU_result_carry;
-                writeM = false;
-            }
-            else if(rt.address == dest_reg->address && writeW){
-                rt.value = ALU_result;
-                writeW = false;
-            }
-        }
+        // check if forwarding is needed for both source registers
+        checkFwd(&rs);
+        checkFwd(&rt);
     
         dest_reg = &registers[instruction.rt];
         // parses the immediate from the instruction
@@ -311,6 +279,19 @@ void Processor::writeback(Instruction &instruction){
     }
     else{
         dest_reg_carry->value = ALU_result_carry;
+    }
+}
+
+void Processor::checkFwd(Register *reg){
+    if(reg->address != 0){
+        if(reg->address == dest_reg_carry->address && writeM){
+            reg->value = ALU_result_carry;
+            writeM = false;
+        }
+        else if(reg->address == dest_reg->address && writeW){
+            reg->value = ALU_result;
+            writeW = false;
+        }
     }
 }
 
