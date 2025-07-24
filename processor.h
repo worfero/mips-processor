@@ -48,7 +48,7 @@ class Processor {
 
         Register registers[MAX_NUM_REG];
 
-        Instruction instStack[5]; 
+        std::vector<Instruction> instStack;
 
         bool writeM;
         bool writeW;

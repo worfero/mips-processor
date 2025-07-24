@@ -2,6 +2,8 @@
 #include <fstream>
 #include <vector>
 #include <iomanip>
+#include <thread>
+#include <functional>
 #include "processor.h"
 
 unsigned get_bits(unsigned num, unsigned lsbit, unsigned msbit) {
@@ -32,13 +34,21 @@ std::vector<unsigned> readFile() {
     while (file.read(reinterpret_cast<char*>(&buffer), sizeof(buffer))) {
         program.push_back(buffer);
     }
-
+    
     file.close();
 
     return program;
 }
 
 void Processor::loadProgram(std::vector<unsigned> program){
+    instructionEnd = false;
+    writeM = false;
+    writeW = false;
+    dest_reg = &registers[0];
+    dest_reg_carry = &registers[0];
+    for(int i=0; i<6; i++){
+        instStack.push_back({0, 0, 0, 0, 0, 0, 0, 0, 0});
+    }
     for(int i = 0; i < program.size(); i++){
         memory_space[i] = program[i];
     }
@@ -51,50 +61,44 @@ void Processor::loadProgram(std::vector<unsigned> program){
         }
     }
     instCounter = 1;
-    instStack[0].stage = FETCH;
+    instStack.at(0).stage = FETCH;
 }
 
 void Processor::run(){
-    instructionEnd = false;
-    writeM = false;
-    writeW = false;
-    dest_reg = &registers[0];
-    dest_reg_carry = &registers[0];
-
     while(instCounter != 0){
+        std::vector<std::thread> threads;
         for(int i=0; i < instCounter; i++){
             switch(instStack[i].stage){
                 case FETCH:
-                    fetch(instStack[i]);
+                    threads.emplace_back(&Processor::fetch, this, std::ref(instStack[i]));
                     instStack[i].stage = DECODE;
-                    std::cout << "Instruction " << i << " of the stack has been fetched." << std::endl;
                     break;
                 case DECODE:
-                    decode(instStack[i]);
+                    threads.emplace_back(&Processor::decode, this, std::ref(instStack[i]));
                     instStack[i].stage = EXECUTE;
-                    std::cout << "Instruction " << i << " of the stack has been decoded." << std::endl;
                     break;
                 case EXECUTE:
-                    execute(instStack[i]);
+                    threads.emplace_back(&Processor::execute, this, std::ref(instStack[i]));
                     instStack[i].stage = MEMORY;
-                    std::cout << "Instruction " << i << " of the stack has been executed." << std::endl;
                     break;
                 case MEMORY:
-                    memory(instStack[i]);
+                    threads.emplace_back(&Processor::memory, this, std::ref(instStack[i]));
                     instStack[i].stage = WRITEBACK;
-                    std::cout << "Instruction " << i << " of the stack has processed memory." << std::endl;
                     break;
                 case WRITEBACK:
-                    writeback(instStack[i]);
-                    std::cout << "Instruction " << i << " of the stack wroteback to register." << std::endl;
+                    threads.emplace_back(&Processor::writeback, this, std::ref(instStack[i]));
                     instructionEnd = true;
-                    std::cout << "Instruction " << i << " of the stack has been finished." << std::endl;
                     break;
+            }
+        }
+        for (std::thread& t : threads) {
+            if (t.joinable()) { // Check if the thread is joinable
+                t.join();
             }
         }
         // if an instruction made through the Writeback stage, it is removed from the array
         if(instructionEnd){
-            std::copy(instStack + 1, instStack + 5, instStack);
+            instStack.erase(instStack.begin() + 1); 
             instCounter--;
             instructionEnd = false;
         }
@@ -171,6 +175,7 @@ void Processor::fetch(Instruction &instruction){
     instruction.instBits = memory_space[pc];
     // prepares pc for the next instruction
     pc++;
+    std::cout << "FETCH" << std::endl;
 }
 
 void Processor::decode(Instruction &instruction){
@@ -188,6 +193,7 @@ void Processor::decode(Instruction &instruction){
         instruction.rt = get_bits(instruction.instBits, 16, 20);
         instruction.imm = get_bits(instruction.instBits, 0, 15);
     }
+    std::cout << "DECODE" << std::endl;
 }
 
 void Processor::execute(Instruction &instruction){
@@ -251,6 +257,7 @@ void Processor::execute(Instruction &instruction){
                 break;
         }
     }
+    std::cout << "EXECUTE" << std::endl;
 }
 
 void Processor::memory(Instruction &instruction){
@@ -271,6 +278,7 @@ void Processor::memory(Instruction &instruction){
             op_sw(rs, rt, offset);
             break;
     }
+    std::cout << "MEMORY" << std::endl;
 }
 
 void Processor::writeback(Instruction &instruction){
@@ -280,6 +288,7 @@ void Processor::writeback(Instruction &instruction){
     else{
         dest_reg_carry->value = ALU_result_carry;
     }
+    std::cout << "WRITEBACK" << std::endl;
 }
 
 void Processor::checkFwd(Register *reg){
@@ -302,7 +311,6 @@ int main(){
     std::vector<unsigned> program = readFile();
     // stores instructions
     processor.loadProgram(program);
-
     processor.run();
     std::cout << std::endl;
     print_registers(processor);
