@@ -53,6 +53,7 @@ class Processor {
         bool writeM;
         bool writeW;
         bool instructionEnd;
+        bool stall;
         // program counter
         unsigned pc;
         // opcode
@@ -71,15 +72,15 @@ class Processor {
 
         void loadProgram(std::vector<unsigned> program);
 
-        void fetch(Instruction &instruction);
+        void fetch(int i);
 
-        void decode(Instruction &instruction);
+        void decode(int i);
 
-        void execute(Instruction &instruction);
+        void execute(int i);
 
-        void memory(Instruction &instruction);
+        void memory(int i);
 
-        void writeback(Instruction &instruction);
+        void writeback(int i);
 
         void checkFwd(Register *reg);
 
