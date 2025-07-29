@@ -11,7 +11,7 @@ std::mutex cout_mutex;
 
 unsigned get_bits(unsigned num, unsigned lsbit, unsigned msbit)
 {
-    unsigned mask = ((1 << (msbit - lsbit + 1)) - 1) << lsbit;
+    unsigned mask = ( uint16_t ) ( ((1 << (msbit - lsbit + 1)) - 1) << lsbit );
     return (num & mask) >> lsbit;
 }
 
@@ -24,13 +24,13 @@ void print_registers(Processor processor)
     }
 }
 
-std::vector<unsigned> readFile()
+std::vector<uint32_t> readFile()
 {
     std::string filename = "mips-assembler/machine-code.bin";
     std::ifstream file(filename, std::ios::binary);
 
-    std::vector<unsigned> program;
-    unsigned buffer;
+    std::vector<uint32_t> program;
+    uint32_t buffer;
 
     if (!file.is_open())
     {
@@ -49,30 +49,29 @@ std::vector<unsigned> readFile()
     return program;
 }
 
-void Processor::loadProgram(std::vector<unsigned> program)
+void Processor::loadProgram(std::vector<uint32_t> program)
 {
     instructionEnd = false;
     writeM = false;
     writeW = false;
-    dest_reg = &registers[0];
-    dest_reg_carry = &registers[0];
+    d_regE = &registers[0];
+    d_regM = &registers[0];
+    stall = 0;
+    stallFlag = 0;
+    stallReset = 0;
     for (int i = 0; i < 6; i++)
     {
         instStack.push_back({0, 0, 0, 0, 0, 0, 0, 0, 0});
     }
-    for (int i = 0; i < program.size(); i++)
-    {
-        memory_space[i] = program[i];
-    }
+
+    memory_space = program;
+
     pc = 0;
-    unsigned array_size = sizeof(memory_space) / sizeof(memory_space[0]);
-    program_size = 0;
-    for (int i = 0; i < 1001; i++)
-    {
-        if (memory_space[i] != 0)
-        {
-            program_size++;
-        }
+    if(memory_space.size() > 1){
+        program_size = ( uint16_t ) ( memory_space.size() );
+    }
+    else{
+        program_size = 0;
     }
     instCounter = 1;
     instStack.at(0).stage = FETCH;
@@ -82,35 +81,35 @@ void Processor::run()
 {
     while (instCounter != 0)
     {
+        std::cout << "Clock" << std::endl;
+        std::cout << std::dec << instCounter << std::endl;
+        std::cout << pc+1 << "/" << program_size+1 << std::endl;
         std::vector<std::thread> threads;
-        for (int i = 0; i < instCounter; i++)
+        for (unsigned i = 0; (std::vector<Instruction>::size_type) i < instCounter; i++)
         {
-            switch (instStack[i].stage)
+            switch (instStack.at(i).stage)
             {
             case FETCH:
                 if(!stall){
                     threads.emplace_back(&Processor::fetch, this, i);
-                    instStack[i].stage = DECODE;
+                    instStack.at(i).stage = DECODE;
                 }
                 break;
             case DECODE:
                 if(!stall){
                     threads.emplace_back(&Processor::decode, this, i);
-                    instStack[i].stage = EXECUTE;
+                    instStack.at(i).stage = EXECUTE;
                 }
                 break;
             case EXECUTE:
-                threads.emplace_back(&Processor::execute, this, i);
-                instStack[i].stage = MEMORY;
+                if(!stall){
+                    threads.emplace_back(&Processor::execute, this, i);
+                    instStack.at(i).stage = MEMORY;
+                }
                 break;
             case MEMORY:
-                if(stall){
-                    stall = 0;
-                    std::lock_guard<std::mutex> lock(cout_mutex);
-                    std::cout << "!!NOT STALL!!" << std::endl;
-                }
                 threads.emplace_back(&Processor::memory, this, i);
-                instStack[i].stage = WRITEBACK;
+                instStack.at(i).stage = WRITEBACK;
                 break;
             case WRITEBACK:
                 threads.emplace_back(&Processor::writeback, this, i);
@@ -125,11 +124,30 @@ void Processor::run()
                 t.join();
             }
         }
+        if(stallReset){
+            stall = 0;
+            stallReset = false;
+            std::lock_guard<std::mutex> lock(cout_mutex);
+            std::cout << "!!NOT STALL!!" << std::endl;
+        }
+        if(stallFlag > 0){
+            if(instStack.at(stallFlag).rt == instStack.at(stallFlag+1).rt || instStack.at(stallFlag).rt == instStack.at(stallFlag+1).rs){
+                stall = 1;
+                std::lock_guard<std::mutex> lock(cout_mutex);
+                std::cout << "!!STALL!!" << std::endl;
+                stallReset = 1;
+                stallFlag = 0;
+            }
+            else{
+                stall = false;
+                stallFlag = 0;
+            }
+        }
         // if an instruction made through the Writeback stage, it is removed from the array
         if (instructionEnd)
         {
-            std::lock_guard<std::mutex> lock(cout_mutex);
             instStack.erase(instStack.begin());
+            std::cout << "Instruction removed from queue" << std::endl;
             instCounter--;
             instructionEnd = false;
         }
@@ -138,12 +156,13 @@ void Processor::run()
             if(!stall){
                 instCounter++;
                 instStack[instCounter].stage = FETCH;
+                std::cout << "Instruction added to queue" << std::endl;
             }
         }
     }
 }
 
-std::bitset<32> get_binary(int num)
+std::bitset<32> get_binary(unsigned num)
 {
     std::bitset<32> x(num);
     return x;
@@ -152,43 +171,43 @@ std::bitset<32> get_binary(int num)
 void Processor::op_add(Register rs, Register rt)
 {
     // performs the arithmetic operation
-    ALU_result = rs.value + rt.value;
+    ALU_resE = rs.value + rt.value;
 }
 
 void Processor::op_sub(Register rs, Register rt)
 {
     // performs the arithmetic operation
-    ALU_result = rs.value - rt.value;
+    ALU_resE = rs.value - rt.value;
 }
 
 void Processor::op_and(Register rs, Register rt)
 {
     // performs the arithmetic operation
-    ALU_result = rs.value & rt.value;
+    ALU_resE = rs.value & rt.value;
 }
 
 void Processor::op_or(Register rs, Register rt)
 {
     // performs the arithmetic operation
-    ALU_result = rs.value | rt.value;
+    ALU_resE = rs.value | rt.value;
 }
 
 void Processor::op_slt(Register rs, Register rt)
 {
     // performs the arithmetic operation
-    (rs.value < rt.value) ? ALU_result = 1 : ALU_result = 0;
+    (rs.value < rt.value) ? ALU_resE = 1 : ALU_resE = 0;
 }
 
-void Processor::op_beq(Register rs, Register rt, unsigned offset, unsigned pc)
+void Processor::op_beq(Register rs, Register rt, unsigned offset)
 {
     // compares rs to rt, if they are equal, add the offset to the program counter
-    (rs.value == rt.value) ? ALU_result = pc + offset : ALU_result = pc;
+    (rs.value == rt.value) ? ALU_resE = pc + offset : ALU_resE = pc;
 }
 
 void Processor::op_addi(Register rs, unsigned imm)
 {
     // sums rs to the immediate and stores it at rt
-    ALU_result = rs.value + imm;
+    ALU_resE = rs.value + imm;
 }
 
 void Processor::op_lw(Register rs, Register *rt, unsigned offset)
@@ -210,7 +229,7 @@ void Processor::op_sw(Register rs, Register *rt, unsigned offset)
     memory_space[mem_addr] = rt->value;
 }
 
-void Processor::fetch(int i)
+void Processor::fetch(unsigned i)
 {
     Instruction *instruction = &instStack[i];
     // stores the instruction in the program counter address to instBits
@@ -221,10 +240,9 @@ void Processor::fetch(int i)
     std::cout << "FETCH: 0x" << std::hex << instruction->instBits << std::endl;
 }
 
-void Processor::decode(int i)
+void Processor::decode(unsigned i)
 {
     Instruction *instruction = &instStack[i];
-    //std::cout << std::endl << instruction.instBits << std::endl;
     // gets instruction opcode
     instruction->op = get_bits(instruction->instBits, 26, 31);
     if (instruction->op == 0)
@@ -245,88 +263,90 @@ void Processor::decode(int i)
     std::cout << "DECODE: 0x" << std::hex << instruction->instBits << std::endl;
 }
 
-void Processor::execute(int i)
+void Processor::execute(unsigned i)
 {
     Instruction *instruction = &instStack[i];
-    if (!stall)
-    {
-        // parses the rt register from the instruction
-        Register rt = registers[instruction->rt];
-        // parses the rs register from the instruction
-        Register rs = registers[instruction->rs];
+    // parses the rt register from the instruction
+    Register rt = registers[instruction->rt];
+    // parses the rs register from the instruction
+    Register rs = registers[instruction->rs];
 
-        // check if forwarding is needed for both source registers
-        checkFwd(&rs);
-        checkFwd(&rt);
-
+    // check if forwarding is needed for both source registers
+    checkFwd(&rs);
+    
+    if(instruction->op == 35){
         if(instStack.size() > 1){
-            if(instruction->rt == instStack[i+1].rt || instruction->rt == instStack[i+1].rs){
-                stall = 1;
-                std::lock_guard<std::mutex> lock(cout_mutex);
-                std::cout << "!!STALL!!" << std::endl;
-            }
+            stallFlag = i;
         }
+    }
 
-        // R-Type instructions
-        if (instruction->op == 0)
+    // R-Type instructions
+    if (instruction->op == 0)
+    {
+        checkFwd(&rt);
+        // parses the rd register from the instruction
+        d_regE = &registers[instruction->rd];
+        switch (instruction->funct)
         {
-            // parses the rd register from the instruction
-            dest_reg = &registers[instruction->rd];
-            switch (instruction->funct)
-            {
-            case 32:
-                op_add(rs, rt);
-                break;
-            case 34:
-                op_sub(rs, rt);
-                break;
-            case 36:
-                op_and(rs, rt);
-                break;
-            case 37:
-                op_or(rs, rt);
-                break;
-            case 42:
-                op_slt(rs, rt);
-                break;
-            default:
-                break;
-            }
+        case 32:
+            op_add(rs, rt);
+            writeW = true;
+            break;
+        case 34:
+            op_sub(rs, rt);
+            writeW = true;
+            break;
+        case 36:
+            op_and(rs, rt);
+            writeW = true;
+            break;
+        case 37:
+            op_or(rs, rt);
+            writeW = true;
+            break;
+        case 42:
+            op_slt(rs, rt);
+            writeW = true;
+            break;
+        default:
+            break;
         }
-        // I-Type instructions
-        else
+    }
+    // I-Type instructions
+    else
+    {
+        d_regE = &registers[instruction->rt];
+        // parses the immediate from the instruction
+        unsigned immediate = instruction->imm;
+        // executes current instruction
+        switch (instruction->op)
         {
-            dest_reg = &registers[instruction->rt];
-            // parses the immediate from the instruction
-            unsigned immediate = instruction->imm;
-            // executes current instruction
-            switch (instruction->op)
-            {
-            case 4:
-                // op_beq(rs, rt, immediate, pc);
-                break;
-            case 8:
-                op_addi(rs, immediate);
-                writeW = true;
-                break;
-            default:
-                break;
-            }
+        case 4:
+            // op_beq(rs, rt, immediate, pc);
+            break;
+        case 8:
+            op_addi(rs, immediate);
+            writeW = true;
+            break;
+        default:
+            break;
         }
-        std::lock_guard<std::mutex> lock(cout_mutex);
-        std::cout << "EXECUTE: 0x" << std::hex << instruction->instBits << std::endl;
     }
-    else{
-        dest_reg = 0;
-        ALU_result = 0;
-    }
+    std::lock_guard<std::mutex> lock(cout_mutex);
+    std::cout << "EXECUTE: 0x" << std::hex << instruction->instBits << std::endl;
 }
 
-void Processor::memory(int i)
+void Processor::memory(unsigned i)
 {
     Instruction *instruction = &instStack[i];
-    ALU_result_carry = ALU_result;
-    dest_reg_carry = dest_reg;
+    ALU_resM = ALU_resE;
+    d_regM = d_regE;
+
+    if(stall){
+        d_regE = nullptr;
+        ALU_resE = 0;
+    }
+
     // parses the rs register from the instruction
     Register rs = registers[instruction->rs];
     // parses the offset from the instruction
@@ -334,27 +354,29 @@ void Processor::memory(int i)
     switch (instruction->op)
     {
     case 35:
-        op_lw(rs, dest_reg_carry, offset);
+        op_lw(rs, d_regM, offset);
         writeM = true;
         break;
     case 43:
-        op_sw(rs, dest_reg_carry, offset);
+        op_sw(rs, d_regM, offset);
         break;
     }
     std::lock_guard<std::mutex> lock(cout_mutex);
     std::cout << "MEMORY: 0x" << std::hex << instruction->instBits << std::endl;
 }
 
-void Processor::writeback(int i)
+void Processor::writeback(unsigned i)
 {
     Instruction *instruction = &instStack[i];
+    ALU_resW = ALU_resM;
+    d_regW = d_regM;
     if (instruction->op > 0 && instruction->op < 8)
     {
-        pc = ALU_result_carry;
+        pc = ALU_resW;
     }
     else
     {
-        dest_reg_carry->value = ALU_result_carry;
+        d_regW->value = ALU_resW;
     }
     std::lock_guard<std::mutex> lock(cout_mutex);
     std::cout << "WRITEBACK: 0x" << std::hex << instruction->instBits << std::endl;
@@ -364,14 +386,14 @@ void Processor::checkFwd(Register *reg)
 {
     if (reg->address != 0)
     {
-        if (reg->address == dest_reg_carry->address && writeM)
+        if (reg->address == d_regM->address && writeM)
         {
-            reg->value = ALU_result_carry;
+            reg->value = d_regM->value;
             writeM = false;
         }
-        else if (reg->address == dest_reg->address && writeW)
+        else if (d_regE != nullptr && reg->address == d_regE->address && writeW)
         {
-            reg->value = ALU_result;
+            reg->value = ALU_resE;
             writeW = false;
         }
     }
@@ -382,9 +404,10 @@ int main()
     Processor processor;
 
     // reads instructions from bin file
-    std::vector<unsigned> program = readFile();
+    std::vector<uint32_t> program = readFile();
     // stores instructions
     processor.loadProgram(program);
+    std::cout << "Starting..." << std::endl;
     processor.run();
     std::cout << std::endl;
     print_registers(processor);

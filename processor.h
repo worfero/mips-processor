@@ -27,24 +27,23 @@ typedef struct {
 
 typedef struct {
     // declaring instruction variables
-    int op;
-    int rd;
-    int rs;
-    int rt;
-    int imm;
-    int sa;
-    int funct;
-    int stage;
+    unsigned op;
+    unsigned rd;
+    unsigned rs;
+    unsigned rt;
+    unsigned imm;
+    unsigned sa;
+    unsigned funct;
+    unsigned stage;
     unsigned instBits;
 } Instruction;
 
 class Processor {
     private:
-        //HazardDtc HazardUnit;
     public:
         Processor();
 
-        uint32_t memory_space[MAX_MEM_SIZE];
+        std::vector<uint32_t> memory_space;
 
         Register registers[MAX_NUM_REG];
 
@@ -54,33 +53,37 @@ class Processor {
         bool writeW;
         bool instructionEnd;
         bool stall;
+        bool stallReset;
+        unsigned stallFlag;
         // program counter
         unsigned pc;
         // opcode
         unsigned opcode;
         // number of instructions
-        int program_size;
-        int instCounter;
+        unsigned program_size;
+        unsigned instCounter;
         // result of the ALU operation
-        unsigned ALU_result;
-        unsigned ALU_result_carry;
+        unsigned ALU_resE;
+        unsigned ALU_resM;
+        unsigned ALU_resW;
         // destination register
-        Register *dest_reg;
-        Register *dest_reg_carry;
+        Register *d_regE;
+        Register *d_regM;
+        Register *d_regW;
 
         void run();
 
-        void loadProgram(std::vector<unsigned> program);
+        void loadProgram(std::vector<uint32_t> program);
 
-        void fetch(int i);
+        void fetch(unsigned i);
 
-        void decode(int i);
+        void decode(unsigned i);
 
-        void execute(int i);
+        void execute(unsigned i);
 
-        void memory(int i);
+        void memory(unsigned i);
 
-        void writeback(int i);
+        void writeback(unsigned i);
 
         void checkFwd(Register *reg);
 
@@ -94,7 +97,7 @@ class Processor {
         
         void op_slt(Register rs, Register rt);
         
-        void op_beq(Register rs, Register rt, unsigned offset, unsigned pc);
+        void op_beq(Register rs, Register rt, unsigned offset);
 
         void op_addi(Register rs, unsigned imm);
         
