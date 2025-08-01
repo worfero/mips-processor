@@ -43,11 +43,10 @@ class Processor {
     public:
         Processor();
 
-        std::vector<uint32_t> memory_space;
-
         Register registers[MAX_NUM_REG];
 
         std::vector<Instruction> instStack;
+        std::vector<uint32_t> memory_space;
 
         bool writeM;
         bool writeW;
@@ -72,6 +71,8 @@ class Processor {
         Register *d_regW;
 
         void run();
+
+        void init_variables();
 
         void loadProgram(std::vector<uint32_t> program);
 

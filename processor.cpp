@@ -5,13 +5,14 @@
 #include <thread>
 #include <functional>
 #include <mutex>
+#include <chrono>
 #include "processor.h"
 
 std::mutex cout_mutex;
 
 unsigned get_bits(unsigned num, unsigned lsbit, unsigned msbit)
 {
-    unsigned mask = ( uint16_t ) ( ((1 << (msbit - lsbit + 1)) - 1) << lsbit );
+    unsigned mask = ((1 << (msbit - lsbit + 1)) - 1) << lsbit;
     return (num & mask) >> lsbit;
 }
 
@@ -49,26 +50,43 @@ std::vector<uint32_t> readFile()
     return program;
 }
 
-void Processor::loadProgram(std::vector<uint32_t> program)
+void Processor::init_variables()
 {
+    std::cout << "flag" << std::endl;
     instructionEnd = false;
     writeM = false;
     writeW = false;
-    d_regE = &registers[0];
-    d_regM = &registers[0];
+    d_regE = nullptr;
+    d_regM = nullptr;
+    d_regW = nullptr;
+    pc = 0;
+    ALU_resE = 0;
+    ALU_resM = 0;
+    ALU_resW = 0;
     stall = 0;
     stallFlag = 0;
     stallReset = 0;
+    instStack.reserve(6);
+    memory_space.reserve(MAX_MEM_SIZE);
+
     for (int i = 0; i < 6; i++)
     {
         instStack.push_back({0, 0, 0, 0, 0, 0, 0, 0, 0});
     }
+}
 
-    memory_space = program;
+void Processor::loadProgram(std::vector<uint32_t> program)
+{
+    init_variables();
+    for(int i=0; i < MAX_MEM_SIZE; i++){
+        memory_space.push_back(0);
+    }
+    for(int i=0; i < program.size(); i++){
+        memory_space.at(i) = program.at(i);
+    }
 
-    pc = 0;
     if(memory_space.size() > 1){
-        program_size = ( uint16_t ) ( memory_space.size() );
+        program_size = ( uint16_t ) ( program.size() );
     }
     else{
         program_size = 0;
@@ -82,7 +100,6 @@ void Processor::run()
     while (instCounter != 0)
     {
         std::cout << "Clock" << std::endl;
-        std::cout << std::dec << instCounter << std::endl;
         std::cout << pc+1 << "/" << program_size+1 << std::endl;
         std::vector<std::thread> threads;
         for (unsigned i = 0; (std::vector<Instruction>::size_type) i < instCounter; i++)
@@ -127,14 +144,26 @@ void Processor::run()
         if(stallReset){
             stall = 0;
             stallReset = false;
-            std::lock_guard<std::mutex> lock(cout_mutex);
+            cout_mutex.lock();
             std::cout << "!!NOT STALL!!" << std::endl;
+            cout_mutex.unlock();
         }
         if(stallFlag > 0){
-            if(instStack.at(stallFlag).rt == instStack.at(stallFlag+1).rt || instStack.at(stallFlag).rt == instStack.at(stallFlag+1).rs){
+            Instruction lwInstruction = instStack.at(stallFlag);
+            Instruction nextInstruction = instStack.at(stallFlag+1);
+            if(lwInstruction.rt == nextInstruction.rs){
                 stall = 1;
-                std::lock_guard<std::mutex> lock(cout_mutex);
+                cout_mutex.lock();
                 std::cout << "!!STALL!!" << std::endl;
+                cout_mutex.unlock();
+                stallReset = 1;
+                stallFlag = 0;
+            }
+            else if(lwInstruction.rt == nextInstruction.rt && nextInstruction.op == 0){
+                stall = 1;
+                cout_mutex.lock();
+                std::cout << "!!STALL!!" << std::endl;
+                cout_mutex.unlock();
                 stallReset = 1;
                 stallFlag = 0;
             }
@@ -146,6 +175,7 @@ void Processor::run()
         // if an instruction made through the Writeback stage, it is removed from the array
         if (instructionEnd)
         {
+           
             instStack.erase(instStack.begin());
             std::cout << "Instruction removed from queue" << std::endl;
             instCounter--;
@@ -155,10 +185,11 @@ void Processor::run()
         {
             if(!stall){
                 instCounter++;
-                instStack[instCounter].stage = FETCH;
+                instStack.push_back({ 0, 0, 0, 0, 0, 0, 0, FETCH, 0 });
                 std::cout << "Instruction added to queue" << std::endl;
             }
         }
+        print_registers(*this);
     }
 }
 
@@ -214,10 +245,13 @@ void Processor::op_lw(Register rs, Register *rt, unsigned offset)
 {
     // gets the value of the specified memory_space address
     unsigned mem_addr = rs.value + offset + DATA_MEM_START;
-    unsigned mem_value = memory_space[mem_addr];
+    if(mem_addr >= memory_space.size()){
+        memory_space[mem_addr] = 0;
+    }
+    uint32_t mem_value = memory_space[mem_addr];
 
     // sets the destination register value to mem_value
-    rt->value = mem_value;
+    rt->value = ( unsigned ) mem_value;
 }
 
 void Processor::op_sw(Register rs, Register *rt, unsigned offset)
@@ -226,7 +260,7 @@ void Processor::op_sw(Register rs, Register *rt, unsigned offset)
     unsigned mem_addr = rs.value + offset + DATA_MEM_START;
 
     // sets the destination register value to mem_value
-    memory_space[mem_addr] = rt->value;
+    memory_space.insert(memory_space.begin() + mem_addr, rt->value);
 }
 
 void Processor::fetch(unsigned i)
@@ -236,8 +270,9 @@ void Processor::fetch(unsigned i)
     instruction->instBits = memory_space[pc];
     // prepares pc for the next instruction
     pc++;
-    std::lock_guard<std::mutex> lock(cout_mutex);
+    cout_mutex.lock();
     std::cout << "FETCH: 0x" << std::hex << instruction->instBits << std::endl;
+    cout_mutex.unlock();
 }
 
 void Processor::decode(unsigned i)
@@ -259,8 +294,9 @@ void Processor::decode(unsigned i)
         instruction->rt = get_bits(instruction->instBits, 16, 20);
         instruction->imm = get_bits(instruction->instBits, 0, 15);
     }
-    std::lock_guard<std::mutex> lock(cout_mutex);
+    cout_mutex.lock();
     std::cout << "DECODE: 0x" << std::hex << instruction->instBits << std::endl;
+    cout_mutex.unlock();
 }
 
 void Processor::execute(unsigned i)
@@ -332,8 +368,9 @@ void Processor::execute(unsigned i)
             break;
         }
     }
-    std::lock_guard<std::mutex> lock(cout_mutex);
+    cout_mutex.lock();
     std::cout << "EXECUTE: 0x" << std::hex << instruction->instBits << std::endl;
+    cout_mutex.unlock();
 }
 
 void Processor::memory(unsigned i)
@@ -341,6 +378,7 @@ void Processor::memory(unsigned i)
     Instruction *instruction = &instStack[i];
     ALU_resM = ALU_resE;
     d_regM = d_regE;
+    writeM = true;
 
     if(stall){
         d_regE = nullptr;
@@ -353,16 +391,16 @@ void Processor::memory(unsigned i)
     unsigned offset = instruction->imm;
     switch (instruction->op)
     {
-    case 35:
-        op_lw(rs, d_regM, offset);
-        writeM = true;
-        break;
-    case 43:
-        op_sw(rs, d_regM, offset);
-        break;
+        case 35:
+            op_lw(rs, d_regM, offset);
+            break;
+        case 43:
+            op_sw(rs, d_regM, offset);
+            break;
     }
-    std::lock_guard<std::mutex> lock(cout_mutex);
+    cout_mutex.lock();
     std::cout << "MEMORY: 0x" << std::hex << instruction->instBits << std::endl;
+    cout_mutex.unlock();
 }
 
 void Processor::writeback(unsigned i)
@@ -374,28 +412,35 @@ void Processor::writeback(unsigned i)
     {
         pc = ALU_resW;
     }
-    else
+    else if(instruction->op < 32)
     {
         d_regW->value = ALU_resW;
     }
-    std::lock_guard<std::mutex> lock(cout_mutex);
+    cout_mutex.lock();
     std::cout << "WRITEBACK: 0x" << std::hex << instruction->instBits << std::endl;
+    cout_mutex.unlock();
 }
 
 void Processor::checkFwd(Register *reg)
 {
     if (reg->address != 0)
     {
-        if (reg->address == d_regM->address && writeM)
-        {
-            reg->value = d_regM->value;
+        if(writeM){
+            if(d_regM != nullptr && reg->address == d_regM->address){
+                reg->value = ALU_resM;
+            }
             writeM = false;
         }
-        else if (d_regE != nullptr && reg->address == d_regE->address && writeW)
-        {
-            reg->value = ALU_resE;
+        else if(writeW){
+            if(d_regE != nullptr && reg->address == d_regE->address){
+                reg->value = ALU_resE;
+            }
             writeW = false;
         }
+    }
+    else{
+        if(writeM) writeM = false;
+        if(writeW) writeW = false;
     }
 }
 
