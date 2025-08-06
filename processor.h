@@ -1,9 +1,18 @@
-#include <iostream>
+#ifndef PROCESSOR_H
+#define PROCESSOR_H
+
 #include <string>
 #include <map>
 #include <stdint.h>
-#include <vector>
 #include <bitset>
+#include <fstream>
+#include <vector>
+#include <iomanip>
+#include <thread>
+#include <functional>
+#include <mutex>
+#include <chrono>
+#include "./utils/utils.h"
 
 #define MAX_MEM_SIZE 65536
 #define BUF_SIZE_FILE   65536    // Maximum buffer for a file
@@ -20,21 +29,21 @@
 
 // saves the values of all registers available
 typedef struct {
-    unsigned address;
+    unsigned address : 5;
     unsigned value;
     std::string mnemonic;
 } Register;
 
 typedef struct {
     // declaring instruction variables
-    unsigned op;
-    unsigned rd;
-    unsigned rs;
-    unsigned rt;
-    unsigned imm;
-    unsigned sa;
-    unsigned funct;
-    unsigned stage;
+    unsigned op : 6;
+    unsigned rd : 5;
+    unsigned rs : 5;
+    unsigned rt: 5 ;
+    unsigned imm : 16;
+    unsigned sa : 5;
+    unsigned funct : 6;
+    unsigned stage : 3;
     unsigned instBits;
 } Instruction;
 
@@ -43,8 +52,7 @@ class Processor {
     public:
         Processor();
 
-        Register registers[MAX_NUM_REG];
-
+        std::vector<Register> registers;
         std::vector<Instruction> instStack;
         std::vector<uint32_t> memory_space;
 
@@ -69,6 +77,8 @@ class Processor {
         Register *d_regE;
         Register *d_regM;
         Register *d_regW;
+
+        void print_registers();
 
         void run();
 
@@ -107,38 +117,4 @@ class Processor {
         void op_sw(Register rs, Register *rt, unsigned offset);
 };
 
-Processor::Processor() : registers 
-{
-    {0, 0x00, "$0"},     // $0 - constant 0
-    {1, 0x00, "$at"},     // $at - assembler temporary
-    {2, 0x00, "$v0"},     // $v0
-    {3, 0x00, "$v1"},     // $v1
-    {4, 0x00, "$a0"},     // $a0
-    {5, 0x00, "$a1"},     // $a1
-    {6, 0x00, "$a2"},     // $a2
-    {7, 0x00, "$a3"},     // $a3
-    {8, 0x00, "$t0"},     // $t0
-    {9, 0x00, "$t1"},     // $t1
-    {10, 0x00, "$t2"},    // $t2
-    {11, 0x00, "$t3"},    // $t3
-    {12, 0x00, "$t4"},    // $t4
-    {13, 0x00, "$t5"},    // $t5
-    {14, 0x00, "$t6"},    // $t6
-    {15, 0x00, "$t7"},    // $t7
-    {16, 0x00, "$s0"},    // $s0
-    {17, 0x00, "$s1"},    // $s1
-    {18, 0x00, "$s2"},    // $s2
-    {19, 0x00, "$s3"},    // $s3
-    {20, 0x00, "$s4"},    // $s4
-    {21, 0x00, "$s5"},    // $s5
-    {22, 0x00, "$s6"},    // $s6
-    {23, 0x00, "$s7"},    // $s7
-    {24, 0x00, "$t8"},    // $t8
-    {25, 0x00, "$t9"},    // $t9
-    {26, 0x00, "$k0"},    // $k0
-    {27, 0x00, "$k1"},    // $k1
-    {28, 0x00, "$gp"},    // $gp - global pounsigneder
-    {29, 0x00, "$sp"},    // $sp - stack pounsigneder
-    {30, 0x00, "$fp"},    // $fp - frame pounsigneder
-    {31, 0x00, "$ra"}     // $ra - procedure return address
-} {}
+#endif

@@ -1,58 +1,49 @@
-#include <bitset>
-#include <fstream>
-#include <vector>
-#include <iomanip>
-#include <thread>
-#include <functional>
-#include <mutex>
-#include <chrono>
 #include "processor.h"
 
 std::mutex cout_mutex;
 
-unsigned get_bits(unsigned num, unsigned lsbit, unsigned msbit)
-{
-    unsigned mask = ((1 << (msbit - lsbit + 1)) - 1) << lsbit;
-    return (num & mask) >> lsbit;
-}
-
-void print_registers(Processor processor)
-{
-    std::cout << "---- Registers ----" << std::endl;
-    for (int i = 0; i < MAX_NUM_REG; i++)
+Processor::Processor(){
+    registers = 
     {
-        std::cout << std::dec << processor.registers[i].mnemonic << " - " << processor.registers[i].value << std::endl;
-    }
-}
-
-std::vector<uint32_t> readFile()
-{
-    std::string filename = "mips-assembler/machine-code.bin";
-    std::ifstream file(filename, std::ios::binary);
-
-    std::vector<uint32_t> program;
-    uint32_t buffer;
-
-    if (!file.is_open())
-    {
-        std::cerr << "Error opening file: " << filename << std::endl;
-        program = {0};
-        return program;
-    }
-
-    while (file.read(reinterpret_cast<char *>(&buffer), sizeof(buffer)))
-    {
-        program.push_back(buffer);
-    }
-
-    file.close();
-
-    return program;
+        {0, 0x00, "$0"},     // $0 - constant 0
+        {1, 0x00, "$at"},     // $at - assembler temporary
+        {2, 0x00, "$v0"},     // $v0
+        {3, 0x00, "$v1"},     // $v1
+        {4, 0x00, "$a0"},     // $a0
+        {5, 0x00, "$a1"},     // $a1
+        {6, 0x00, "$a2"},     // $a2
+        {7, 0x00, "$a3"},     // $a3
+        {8, 0x00, "$t0"},     // $t0
+        {9, 0x00, "$t1"},     // $t1
+        {10, 0x00, "$t2"},    // $t2
+        {11, 0x00, "$t3"},    // $t3
+        {12, 0x00, "$t4"},    // $t4
+        {13, 0x00, "$t5"},    // $t5
+        {14, 0x00, "$t6"},    // $t6
+        {15, 0x00, "$t7"},    // $t7
+        {16, 0x00, "$s0"},    // $s0
+        {17, 0x00, "$s1"},    // $s1
+        {18, 0x00, "$s2"},    // $s2
+        {19, 0x00, "$s3"},    // $s3
+        {20, 0x00, "$s4"},    // $s4
+        {21, 0x00, "$s5"},    // $s5
+        {22, 0x00, "$s6"},    // $s6
+        {23, 0x00, "$s7"},    // $s7
+        {24, 0x00, "$t8"},    // $t8
+        {25, 0x00, "$t9"},    // $t9
+        {26, 0x00, "$k0"},    // $k0
+        {27, 0x00, "$k1"},    // $k1
+        {28, 0x00, "$gp"},    // $gp - global pounsigneder
+        {29, 0x00, "$sp"},    // $sp - stack pounsigneder
+        {30, 0x00, "$fp"},    // $fp - frame pounsigneder
+        {31, 0x00, "$ra"}     // $ra - procedure return address
+    };
+    instStack.reserve(6);
+    memory_space.reserve(MAX_MEM_SIZE);
 }
 
 void Processor::init_variables()
 {
-    std::cout << "flag" << std::endl;
     instructionEnd = false;
     writeM = false;
     writeW = false;
@@ -66,8 +57,6 @@ void Processor::init_variables()
     stall = 0;
     stallFlag = 0;
     stallReset = 0;
-    instStack.reserve(6);
-    memory_space.reserve(MAX_MEM_SIZE);
 
     for (int i = 0; i < 6; i++)
     {
@@ -95,12 +84,85 @@ void Processor::loadProgram(std::vector<uint32_t> program)
     instStack.at(0).stage = FETCH;
 }
 
+void Processor::print_registers()
+{
+    std::cout << "---- Registers ----" << std::endl;
+    for (int i = 0; i < MAX_NUM_REG; i++)
+    {
+        std::cout << std::dec << registers[i].mnemonic << " - " << registers[i].value << std::endl;
+    }
+}
+
+void Processor::op_add(Register rs, Register rt)
+{
+    // performs the arithmetic operation
+    ALU_resE = rs.value + rt.value;
+}
+
+void Processor::op_sub(Register rs, Register rt)
+{
+    // performs the arithmetic operation
+    ALU_resE = rs.value - rt.value;
+}
+
+void Processor::op_and(Register rs, Register rt)
+{
+    // performs the arithmetic operation
+    ALU_resE = rs.value & rt.value;
+}
+
+void Processor::op_or(Register rs, Register rt)
+{
+    // performs the arithmetic operation
+    ALU_resE = rs.value | rt.value;
+}
+
+void Processor::op_slt(Register rs, Register rt)
+{
+    // performs the arithmetic operation
+    (rs.value < rt.value) ? ALU_resE = 1 : ALU_resE = 0;
+}
+
+void Processor::op_beq(Register rs, Register rt, unsigned offset)
+{
+    // compares rs to rt, if they are equal, add the offset to the program counter
+    (rs.value == rt.value) ? ALU_resE = pc + offset : ALU_resE = pc;
+}
+
+void Processor::op_addi(Register rs, unsigned imm)
+{
+    // sums rs to the immediate and stores it at rt
+    ALU_resE = rs.value + imm;
+}
+
+void Processor::op_lw(Register rs, Register *rt, unsigned offset)
+{
+    // gets the value of the specified memory_space address
+    unsigned mem_addr = rs.value + offset + DATA_MEM_START;
+    if(mem_addr >= memory_space.size()){
+        memory_space[mem_addr] = 0;
+    }
+    uint32_t mem_value = memory_space[mem_addr];
+
+    // sets the destination register value to mem_value
+    rt->value = ( unsigned ) mem_value;
+}
+
+void Processor::op_sw(Register rs, Register *rt, unsigned offset)
+{
+    // gets the value of the specified memory_space address
+    unsigned mem_addr = rs.value + offset + DATA_MEM_START;
+
+    // sets the destination register value to mem_value
+    memory_space.at(mem_addr) = rt->value;
+}
+
 void Processor::run()
 {
     while (instCounter != 0)
     {
         std::cout << "Clock" << std::endl;
-        std::cout << pc+1 << "/" << program_size+1 << std::endl;
+        std::cout << std::dec << pc+1 << "/" << program_size+1 << std::endl;
         std::vector<std::thread> threads;
         for (unsigned i = 0; (std::vector<Instruction>::size_type) i < instCounter; i++)
         {
@@ -189,7 +251,7 @@ void Processor::run()
                 std::cout << "Instruction added to queue" << std::endl;
             }
         }
-        print_registers(*this);
+        //print_registers(*this);
     }
 }
 
@@ -197,70 +259,6 @@ std::bitset<32> get_binary(unsigned num)
 {
     std::bitset<32> x(num);
     return x;
-}
-
-void Processor::op_add(Register rs, Register rt)
-{
-    // performs the arithmetic operation
-    ALU_resE = rs.value + rt.value;
-}
-
-void Processor::op_sub(Register rs, Register rt)
-{
-    // performs the arithmetic operation
-    ALU_resE = rs.value - rt.value;
-}
-
-void Processor::op_and(Register rs, Register rt)
-{
-    // performs the arithmetic operation
-    ALU_resE = rs.value & rt.value;
-}
-
-void Processor::op_or(Register rs, Register rt)
-{
-    // performs the arithmetic operation
-    ALU_resE = rs.value | rt.value;
-}
-
-void Processor::op_slt(Register rs, Register rt)
-{
-    // performs the arithmetic operation
-    (rs.value < rt.value) ? ALU_resE = 1 : ALU_resE = 0;
-}
-
-void Processor::op_beq(Register rs, Register rt, unsigned offset)
-{
-    // compares rs to rt, if they are equal, add the offset to the program counter
-    (rs.value == rt.value) ? ALU_resE = pc + offset : ALU_resE = pc;
-}
-
-void Processor::op_addi(Register rs, unsigned imm)
-{
-    // sums rs to the immediate and stores it at rt
-    ALU_resE = rs.value + imm;
-}
-
-void Processor::op_lw(Register rs, Register *rt, unsigned offset)
-{
-    // gets the value of the specified memory_space address
-    unsigned mem_addr = rs.value + offset + DATA_MEM_START;
-    if(mem_addr >= memory_space.size()){
-        memory_space[mem_addr] = 0;
-    }
-    uint32_t mem_value = memory_space[mem_addr];
-
-    // sets the destination register value to mem_value
-    rt->value = ( unsigned ) mem_value;
-}
-
-void Processor::op_sw(Register rs, Register *rt, unsigned offset)
-{
-    // gets the value of the specified memory_space address
-    unsigned mem_addr = rs.value + offset + DATA_MEM_START;
-
-    // sets the destination register value to mem_value
-    memory_space.insert(memory_space.begin() + mem_addr, rt->value);
 }
 
 void Processor::fetch(unsigned i)
@@ -442,18 +440,4 @@ void Processor::checkFwd(Register *reg)
         if(writeM) writeM = false;
         if(writeW) writeW = false;
     }
-}
-
-int main()
-{
-    Processor processor;
-
-    // reads instructions from bin file
-    std::vector<uint32_t> program = readFile();
-    // stores instructions
-    processor.loadProgram(program);
-    std::cout << "Starting..." << std::endl;
-    processor.run();
-    std::cout << std::endl;
-    print_registers(processor);
 }
