@@ -11,6 +11,7 @@
 #include <thread>
 #include <functional>
 #include <mutex>
+#include <condition_variable>
 #include <chrono>
 #include "./utils/utils.h"
 

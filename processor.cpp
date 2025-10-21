@@ -70,7 +70,7 @@ void Processor::loadProgram(std::vector<uint32_t> program)
     for(int i=0; i < MAX_MEM_SIZE; i++){
         memory_space.push_back(0);
     }
-    for(int i=0; i < program.size(); i++){
+    for(int i=0; (long long unsigned int)i < program.size(); i++){
         memory_space.at(i) = program.at(i);
     }
 
@@ -89,7 +89,9 @@ void Processor::print_registers()
     std::cout << "---- Registers ----" << std::endl;
     for (int i = 0; i < MAX_NUM_REG; i++)
     {
+        cout_mutex.lock();
         std::cout << std::dec << registers[i].mnemonic << " - " << registers[i].value << std::endl;
+        cout_mutex.unlock();
     }
 }
 
@@ -193,6 +195,8 @@ void Processor::run()
             case WRITEBACK:
                 threads.emplace_back(&Processor::writeback, this, i);
                 instructionEnd = true;
+                print_registers();
+                std::cout << std::endl;
                 break;
             }
         }
@@ -305,7 +309,7 @@ void Processor::execute(unsigned i)
     // parses the rs register from the instruction
     Register rs = registers[instruction->rs];
 
-    // check if forwarding is needed for both source registers
+    // check if forwarding is needed for rs register
     checkFwd(&rs);
     
     if(instruction->op == 35){
@@ -317,7 +321,11 @@ void Processor::execute(unsigned i)
     // R-Type instructions
     if (instruction->op == 0)
     {
+        // check if forwarding is needed for rt register, in case it's an R-Type instruction
         checkFwd(&rt);
+        // disable forwarding flags
+        if(writeM) writeM = false;
+        if(writeW) writeW = false;
         // parses the rd register from the instruction
         d_regE = &registers[instruction->rd];
         switch (instruction->funct)
@@ -349,6 +357,9 @@ void Processor::execute(unsigned i)
     // I-Type instructions
     else
     {
+        // disable forwarding flags
+        if(writeM) writeM = false;
+        if(writeW) writeW = false;
         d_regE = &registers[instruction->rt];
         // parses the immediate from the instruction
         unsigned immediate = instruction->imm;
@@ -435,9 +446,5 @@ void Processor::checkFwd(Register *reg)
             }
             writeW = false;
         }
-    }
-    else{
-        if(writeM) writeM = false;
-        if(writeW) writeW = false;
     }
 }
