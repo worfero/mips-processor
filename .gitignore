@@ -1,10 +1,5 @@
-notes.txt
 *.exe
-*.ilk
-*.obj
-*.pdb
+!asm/assembler.exe
+*.o
 .vscode
-mips1.asm
-/build
 .vs
-bash.sh

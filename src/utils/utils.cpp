@@ -8,7 +8,7 @@ unsigned get_bits(unsigned num, unsigned lsbit, unsigned msbit)
 
 std::vector<uint32_t> readFile()
 {
-    std::string filename = "mips-assembler/machine-code.bin";
+    std::string filename = "./build/machine-code.bin";
     std::ifstream file(filename, std::ios::binary);
 
     std::vector<uint32_t> program;
@@ -17,8 +17,7 @@ std::vector<uint32_t> readFile()
     if (!file.is_open())
     {
         std::cerr << "Error opening file: " << filename << std::endl;
-        program = {0};
-        return program;
+        exit(EXIT_FAILURE);
     }
 
     while (file.read(reinterpret_cast<char *>(&buffer), sizeof(buffer)))

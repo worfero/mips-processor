@@ -13,7 +13,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
-#include "./utils/utils.h"
+#include "../src/utils/utils.h"
 
 #define MAX_MEM_SIZE 65536
 #define BUF_SIZE_FILE   65536    // Maximum buffer for a file
