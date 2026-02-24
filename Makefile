@@ -3,7 +3,15 @@ OBJ_DIR = build
 INCLUDE_DIR = include
 ASSEMBLER_SRC = asm
 
-ASSEMBLER = assembler.exe
+ifeq ($(OS),Windows_NT)
+    EXE_EXT = .exe
+    RM = rm -rf
+else
+    EXE_EXT =
+    RM = rm -rf
+endif
+
+ASSEMBLER = assembler$(EXE_EXT)
 
 CC = g++
 CFLAGS = -Wall -I$(INCLUDE_DIR)
@@ -25,6 +33,6 @@ clean:
 
 run: $(TARGET)
 	@echo -e "Assembling...\n"
-	$(ASSEMBLER_SRC)/$(ASSEMBLER)
+	$(ASSEMBLER_SRC)/$(ASSEMBLER) asm/assembly.asm asm/build/machine-code.bin
 	@echo -e "\nRunning $(TARGET)..."
 	@$(TARGET)

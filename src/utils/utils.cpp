@@ -8,7 +8,7 @@ unsigned get_bits(unsigned num, unsigned lsbit, unsigned msbit)
 
 std::vector<uint32_t> readFile()
 {
-    std::string filename = "./build/machine-code.bin";
+    std::string filename = "./asm/build/machine-code.bin";
     std::ifstream file(filename, std::ios::binary);
 
     std::vector<uint32_t> program;
